@@ -9,6 +9,8 @@
 M.Tech dissertation codebase and companion to the IEEE journal manuscript (IEEE Access / IEEE TDSC format).
 Every module is executable, seeded (`SEED = 42`) and covered by a phase test suite.
 
+> 💡 **First time running this project?** See the step-by-step [First-Time User Guide](FIRST_TIME_USER_GUIDE.md) to set up your environment, download all real datasets with a single command, train models, and reproduce paper results from scratch.
+
 ---
 
 ## Contents
