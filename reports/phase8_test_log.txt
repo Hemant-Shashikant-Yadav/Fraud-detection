@@ -1,0 +1,221 @@
+=== environment === 
+started 03-11-2026 18:05:38.82 
+Python 3.13.7
+C:\Python313\python.exe
+numpy 2.3.3 pandas 2.3.2 sklearn 1.7.2 matplotlib 3.10.7
+torch 2.15.0+cpu threads 6
+xgboost 3.4.1
+streamlit 1.66.1
+=== phase 8 tests (quick demo end-to-end, tables, figures, CLI, live service, dashboard) === 
+
+----- quick-demo stdout (tail) -----
+==============================================================================
+ MG-ECFM quick demo (Phase 8)
+==============================================================================
+[stage] causal stream + chronological splits ...
+[stage] causal stream + chronological splits done in 0.7s
+        train=4064 cal=854 op=818 test=3115 (154 frauds) in 10 windows
+[stage] fit MG-ECFM + BP1-BP4 ...
+[fit] mg_ecfm                2.5s  tau=0.2500
+[fit] bp1                    3.3s  tau=0.9117
+[fit] bp2                    0.6s  tau=0.8313
+[fit] bp3                    0.5s  tau=0.8604
+[fit] bp4                    3.4s  tau=0.9891
+[stage] fit MG-ECFM + BP1-BP4 done in 10.4s
+[stage] prequential drift evaluation ...
+[window  10/10] mg_ecfm=0.522  bp1=0.510  bp2=0.647  bp3=0.672  bp4=0.410
+[stage] prequential drift evaluation done in 2.2s
+  [PASS] predictions[mg_ecfm]: 3115 scored test transactions, mean PR-AUC 0.482
+  [PASS] predictions[bp1]: 3115 scored test transactions, mean PR-AUC 0.476
+  [PASS] predictions[bp2]: 3115 scored test transactions, mean PR-AUC 0.514
+  [PASS] predictions[bp3]: 3115 scored test transactions, mean PR-AUC 0.463
+  [PASS] predictions[bp4]: 3115 scored test transactions, mean PR-AUC 0.498
+[stage] statistical significance ...
+[stage] statistical significance done in 3.4s
+  [PASS] significance tests: McNemar + Wilcoxon + block bootstrap vs BP1-BP4
+[stage] B1-B5 ablation ...
+[stage] B1-B5 ablation done in 7.3s
+  [PASS] ablation arms: B1_xgboost_only, B2_graph_gate_off, B3_static_crc, B3_adaptive_crc, B4_full_mg_ecfm, B5_assist_off, B5_assist_on
+[stage] adversarial stress test ...
+[stage] adversarial stress test done in 5.4s
+  [PASS] Ville bound (all poisoning rates): exact crossing prob 0.0365 <= alpha
+[stage] live service ...
+[stage] live service done in 0.2s
+  [PASS] single-transaction scoring: 'Known mule-network transfer (verified fraud pattern)': p=0.273 -> Step-Up (threshold), 0 KB rules fired
+[stage] latency profile (200 tx) ...
+[stage] latency profile (200 tx) done in 2.0s
+  [PASS] authorisation latency p95 < 5 ms: p50=3.10 ms p95=4.00 ms p99=4.66 ms (causal featurisation p50=5.52 ms, timed separately)
+  [PASS] camouflage graph: 38 nodes, 40 neighbour edges, 24 pruned
+  [PASS] batch CSV scoring: 199 rows in 0.371 ms/tx; leakage columns stripped: ['oldbalanceOrg', 'newbalanceOrig', 'oldbalanceDest', 'newbalanceDest', 'isFlaggedFraud']
+  [PASS] TD-TPF recovery trace: tx 7101: recovered 76.4% after 1 h, 1 accounts frozen
+[stage] save / load service ...
+[stage] save / load service done in 0.1s
+  [PASS] service persistence: quick_demo_service.pkl: |p_reload - p| = 0.00e+00
+[stage] paper tables ...
+[stage] paper tables done in 0.1s
+  [PASS] tables: 4 tables -> paper_tables.tex / .md
+[stage] paper figures ...
+[stage] paper figures done in 6.2s
+  [PASS] figures: 8 files (4 figures x PDF/PNG, 300 DPI)
+  [PASS] runtime < 60s: 41.5s end-to-end
+==============================================================================
+ quick demo finished in 41.5s - 17/17 checks passed
+==============================================================================
+test_app_compiles (__main__.TestDashboard.test_app_compiles) ... ok
+test_app_renders_headless (__main__.TestDashboard.test_app_renders_headless) ... 2026-11-03 18:06:37.350 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch\jit\_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+2026-11-03 18:06:45.593 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:45.757 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:46.311 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:46.312 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:46.494 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:46.712 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:46.716 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:46.888 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:46.890 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:46.891 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:47.064 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:47.222 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:47.738 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:47.739 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:47.926 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:48.115 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:48.119 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:48.235 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:48.237 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-11-03 18:06:48.238 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+ok
+test_graph_explanation (__main__.TestLiveService.test_graph_explanation) ... ok
+test_kb_opinions_are_valid (__main__.TestLiveService.test_kb_opinions_are_valid) ... ok
+test_presets_cover_dashboard (__main__.TestLiveService.test_presets_cover_dashboard) ... ok
+test_recovery_trace (__main__.TestLiveService.test_recovery_trace) ... ok
+test_what_if_scoring_is_side_effect_free (__main__.TestLiveService.test_what_if_scoring_is_side_effect_free) ... ok
+test_quick_demo_figures (__main__.TestPaperFigures.test_quick_demo_figures) ... ok
+test_missing_inputs_raise (__main__.TestPaperTables.test_missing_inputs_raise) ... ok
+test_quick_demo_tables (__main__.TestPaperTables.test_quick_demo_tables) ... ok
+test_tables_from_published_reports (__main__.TestPaperTables.test_tables_from_published_reports) ... ok
+test_cli_help (__main__.TestPredictCLI.test_cli_help) ... ok
+test_cli_rejects_missing_file (__main__.TestPredictCLI.test_cli_rejects_missing_file) ... ok
+test_predict_writes_decisions (__main__.TestPredictCLI.test_predict_writes_decisions) ... ok
+test_all_internal_checks_pass (__main__.TestQuickDemoEndToEnd.test_all_internal_checks_pass) ... ok
+test_every_model_predicts_every_test_transaction (__main__.TestQuickDemoEndToEnd.test_every_model_predicts_every_test_transaction) ... ok
+test_exit_code_zero (__main__.TestQuickDemoEndToEnd.test_exit_code_zero) ... ok
+test_experiment_outputs_exist (__main__.TestQuickDemoEndToEnd.test_experiment_outputs_exist) ... ok
+test_latency_profile_recorded (__main__.TestQuickDemoEndToEnd.test_latency_profile_recorded) ... ok
+test_runtime_budget (__main__.TestQuickDemoEndToEnd.test_runtime_budget) ... ok
+test_scored_upload_strips_leakage (__main__.TestQuickDemoEndToEnd.test_scored_upload_strips_leakage) ... ok
+
+----------------------------------------------------------------------
+Ran 21 tests in 69.553s
+
+OK
+PHASE8_EXIT_CODE=0 
+=== quick demo manifest checks === 
+PASS | predictions[mg_ecfm] | 3115 scored test transactions, mean PR-AUC 0.482
+PASS | predictions[bp1] | 3115 scored test transactions, mean PR-AUC 0.476
+PASS | predictions[bp2] | 3115 scored test transactions, mean PR-AUC 0.514
+PASS | predictions[bp3] | 3115 scored test transactions, mean PR-AUC 0.463
+PASS | predictions[bp4] | 3115 scored test transactions, mean PR-AUC 0.498
+PASS | significance tests | McNemar + Wilcoxon + block bootstrap vs BP1-BP4
+PASS | ablation arms | B1_xgboost_only, B2_graph_gate_off, B3_static_crc, B3_adaptive_crc, B4_full_mg_ecfm, B5_assist_off, B5_assist_on
+PASS | Ville bound (all poisoning rates) | exact crossing prob 0.0365 <= alpha
+PASS | single-transaction scoring | 'Known mule-network transfer (verified fraud pattern)': p=0.273 -> Step-Up (threshold), 0 KB rules fired
+PASS | authorisation latency p95 < 5 ms | p50=3.10 ms p95=4.00 ms p99=4.66 ms (causal featurisation p50=5.52 ms, timed separately)
+PASS | camouflage graph | 38 nodes, 40 neighbour edges, 24 pruned
+PASS | batch CSV scoring | 199 rows in 0.371 ms/tx; leakage columns stripped: ['oldbalanceOrg', 'newbalanceOrig', 'oldbalanceDest', 'newbalanceDest', 'isFlaggedFraud']
+PASS | TD-TPF recovery trace | tx 7101: recovered 76.4% after 1 h, 1 accounts frozen
+PASS | service persistence | quick_demo_service.pkl: |p_reload - p| = 0.00e+00
+PASS | tables | 4 tables -> paper_tables.tex / .md
+PASS | figures | 8 files (4 figures x PDF/PNG, 300 DPI)
+PASS | runtime < 60s | 41.5s end-to-end
+QUICK_DEMO_RUNTIME_S 41.5
+QUICK_DEMO_ALL_PASSED True
+=== summary === 
+RUN_COUNTS [21]
+TOTAL_TESTS_RUN 21
+TOTAL_SKIPPED 0
+P8=0 P7=skipped P6=skipped P5=skipped P4=skipped P3=skipped P2=skipped P1=skipped ARTIFACTS=skipped 
+OVERALL_EXIT_CODE=0 
+finished 03-11-2026 18:06:59.66 
+DONE 

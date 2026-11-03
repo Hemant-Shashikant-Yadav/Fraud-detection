@@ -1,0 +1,146 @@
+{
+  "seed": 42,
+  "xgboost": {
+    "objective": "binary:logistic",
+    "eval_metric": "aucpr",
+    "tree_method": "hist",
+    "n_estimators": 600,
+    "max_depth": 6,
+    "learning_rate": 0.05,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "min_child_weight": 5,
+    "gamma": 0.0,
+    "reg_lambda": 1.0,
+    "reg_alpha": 0.0,
+    "max_bin": 256,
+    "scale_pos_weight": "auto",
+    "early_stopping_rounds": 50,
+    "cost_sensitive": {
+      "fn_weight": 25.0,
+      "fp_weight": 1.0,
+      "amount_weighted": true
+    },
+    "calibration": {
+      "method": "isotonic",
+      "fallback": "venn_abers",
+      "fit_split": "calibration"
+    },
+    "random_state": 42,
+    "n_jobs": -1
+  },
+  "autoencoder": {
+    "hidden_dims": [64, 32],
+    "latent_dim": 16,
+    "activation": "relu",
+    "input_noise_std": 0.1,
+    "dropout": 0.1,
+    "learning_rate": 0.001,
+    "weight_decay": 1e-5,
+    "batch_size": 2048,
+    "epochs": 30,
+    "train_on_legitimate_only": true,
+    "early_stopping_patience": 5
+  },
+  "temporal_memory": {
+    "memory_dim": 64,
+    "decay_delta": 0.05,
+    "time_unit": "step",
+    "message_includes_amount": true,
+    "init": "xavier_uniform",
+    "max_staleness_steps": 720
+  },
+  "similarity_filter": {
+    "hidden_dim": 32,
+    "distance": "l1",
+    "similarity_threshold_p": 0.5,
+    "min_neighbors_kept": 1,
+    "learning_rate": 0.001,
+    "label_aware": true
+  },
+  "graphsage": {
+    "hidden_dim": 128,
+    "out_dim": 64,
+    "num_layers": 2,
+    "fanouts": [15, 10],
+    "aggregator": "mean",
+    "dropout": 0.2,
+    "learning_rate": 0.001,
+    "weight_decay": 5e-4,
+    "batch_size": 1024,
+    "epochs": 20,
+    "neg_pos_ratio": 10,
+    "latency_budget_ms": 25
+  },
+  "fusion": {
+    "stacking_model": "xgboost",
+    "use_relational_embeddings": true,
+    "use_ae_residual": true,
+    "use_kb_triggers": true
+  },
+  "conformal_crc": {
+    "actions": ["approve", "step_up", "hold", "block"],
+    "target_risk_alpha": 0.02,
+    "gamma_step_size": 0.005,
+    "lambda_init": {"low": 0.20, "mid": 0.50, "high": 0.85},
+    "lambda_bounds": [0.0, 1.0],
+    "min_threshold_gap": 0.01,
+    "warmup_transactions": 500,
+    "mode": "adaptive",
+    "loss_cap": 1.0,
+    "rolling_window": 1000,
+    "router": {
+      "kappa_uncertainty": 0.5,
+      "block_max_uncertainty": 0.25,
+      "rule_floor_action": "step_up",
+      "amount_aware_escalation": false,
+      "latency_budget_ms": 1.0
+    }
+  },
+  "subjective_logic": {
+    "prior_weight_W": 2.0,
+    "base_rate_a": 0.5,
+    "freshness_eta": 0.01,
+    "freshness_time_unit": "step",
+    "min_belief_for_quarantine": 0.55,
+    "max_uncertainty_for_quarantine": 0.35,
+    "default_source_reliability": 0.5
+  },
+  "martingale_eprocess": {
+    "admission": {
+      "p0": 0.5,
+      "p1": 0.8,
+      "alpha_admit": 0.05
+    },
+    "rollback": {
+      "q0": 0.20,
+      "q1": 0.50,
+      "alpha_roll": 0.05,
+      "max_rollback_cycles": 3,
+      "monitor": "martingale",
+      "policy": "targeted"
+    },
+    "max_firings_per_candidate": 5000,
+    "max_admissions_per_rule": 2,
+    "betting": "likelihood_ratio",
+    "screening": "lenient"
+  },
+  "drift_detection": {
+    "adwin_delta": 0.002,
+    "eddm_alpha": 0.95,
+    "eddm_beta": 0.90,
+    "min_samples": 30
+  },
+  "tdtpf": {
+    "recovery_window_hours": 24,
+    "kappa_decay_per_hour": 0.10,
+    "min_taint": 0.01,
+    "max_hops": 6,
+    "freeze_liquid_fraction": 1.0
+  },
+  "closed_loop": {
+    "label_delay_days": [1, 14],
+    "recalibration_interval_steps": 24,
+    "rollback_check_interval_steps": 6
+  }
+}

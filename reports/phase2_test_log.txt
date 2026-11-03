@@ -1,0 +1,117 @@
+=== environment === 
+Python 3.13.7
+C:\Python313\python.exe
+numpy 2.3.3 pandas 2.3.2 sklearn 1.7.2
+torch 2.15.0+cpu
+xgboost 3.4.1
+C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch\jit\_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+torch_geometric 2.8.1
+=== phase 2 tests === 
+C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch\jit\_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+test_anomalies_have_larger_residual (__main__.TestAutoencoderResidual.test_anomalies_have_larger_residual) ... ok
+test_residual_matches_definition (__main__.TestAutoencoderResidual.test_residual_matches_definition) ... ok
+test_filtered_message_passing_ignores_camouflage (__main__.TestCamouflageGraphSAGE.test_filtered_message_passing_ignores_camouflage) ... ok
+test_fit_stream_trains_all_components (__main__.TestCamouflageGraphSAGE.test_fit_stream_trains_all_components) ... C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+ok
+test_pyg_and_fallback_agree (__main__.TestCamouflageGraphSAGE.test_pyg_and_fallback_agree) ... C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+ok
+test_sage_layer_formula (__main__.TestCamouflageGraphSAGE.test_sage_layer_formula) ... ok
+test_single_event_latency_under_budget (__main__.TestCamouflageGraphSAGE.test_single_event_latency_under_budget)
+Full-size config (d_s=64, 128->64, fanouts 15/10) on a dense graph. ... ok
+test_stream_embeddings_are_causal (__main__.TestCamouflageGraphSAGE.test_stream_embeddings_are_causal) ... C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+ok
+test_within_step_permutation_invariance (__main__.TestCamouflageGraphSAGE.test_within_step_permutation_invariance) ... C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+ok
+C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+test_calibrated_risk_bounded_on_future_split (__main__.TestFusionClassifier.test_calibrated_risk_bounded_on_future_split) ... ok
+test_end_to_end_latency_under_budget (__main__.TestFusionClassifier.test_end_to_end_latency_under_budget) ... ok
+test_full_size_fusion_latency (__main__.TestFusionClassifier.test_full_size_fusion_latency)
+Default hyperparams (600 trees, d_s=64, 128->64 GraphSAGE). ... C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+ok
+test_fusion_vector_layout (__main__.TestFusionClassifier.test_fusion_vector_layout) ... ok
+test_kb_encoder_frame_event_consistency (__main__.TestFusionClassifier.test_kb_encoder_frame_event_consistency) ... ok
+test_rejects_leakage_and_overlapping_splits (__main__.TestFusionClassifier.test_rejects_leakage_and_overlapping_splits) ... C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+ok
+test_label_aware_training_breaks_camouflage (__main__.TestSimilarityFilter.test_label_aware_training_breaks_camouflage) ... ok
+test_rank_within_centre (__main__.TestSimilarityFilter.test_rank_within_centre) ... ok
+test_similarity_formula (__main__.TestSimilarityFilter.test_similarity_formula) ... ok
+test_threshold_pruning_removes_camouflaged_edges (__main__.TestSimilarityFilter.test_threshold_pruning_removes_camouflaged_edges) ... ok
+test_top_p_and_min_neighbour_modes (__main__.TestSimilarityFilter.test_top_p_and_min_neighbour_modes) ... ok
+test_calibrated_risk_is_bounded_and_monotone (__main__.TestTabularEngine.test_calibrated_risk_is_bounded_and_monotone) ... ok
+test_calibration_improves_brier (__main__.TestTabularEngine.test_calibration_improves_brier) ... ok
+test_cost_sensitive_weighting (__main__.TestTabularEngine.test_cost_sensitive_weighting) ... ok
+test_venn_abers_engine_interval (__main__.TestTabularEngine.test_venn_abers_engine_interval) ... ok
+test_venn_abers_exact_against_brute_force (__main__.TestTabularEngine.test_venn_abers_exact_against_brute_force) ... ok
+test_batch_commit_equals_sequential_updates (__main__.TestTemporalMemory.test_batch_commit_equals_sequential_updates) ... ok
+test_constant_time_read_and_update (__main__.TestTemporalMemory.test_constant_time_read_and_update) ... ok
+test_event_states_do_not_see_same_batch (__main__.TestTemporalMemory.test_event_states_do_not_see_same_batch) ... ok
+test_exponential_decay_formula (__main__.TestTemporalMemory.test_exponential_decay_formula) ... ok
+test_export_load_roundtrip_and_scaler (__main__.TestTemporalMemory.test_export_load_roundtrip_and_scaler) ... ok
+test_gradient_reaches_w_mem_but_not_memory (__main__.TestTemporalMemory.test_gradient_reaches_w_mem_but_not_memory) ... ok
+test_unseen_and_stale_nodes_read_zero (__main__.TestTemporalMemory.test_unseen_and_stale_nodes_read_zero) ... ok
+
+----------------------------------------------------------------------
+Ran 32 tests in 8.949s
+
+OK
+
+[latency] GraphSAGE embed_event p50=2.93 ms p95=4.03 ms (mean edges=331)
+
+[latency] fused score_event p50=3.61 ms p95=4.99 ms p99=7.18 ms
+
+[latency] full-size fused score_event p50=3.62 ms p95=5.47 ms
+EXIT_CODE=0 
+=== phase 1 regression === 
+test_assign_split (__main__.TestConfigsAndScaffolding.test_assign_split) ... ok
+test_hyperparams_sections (__main__.TestConfigsAndScaffolding.test_hyperparams_sections) ... ok
+test_overlapping_splits_rejected (__main__.TestConfigsAndScaffolding.test_overlapping_splits_rejected) ... ok
+test_scaffolding_script (__main__.TestConfigsAndScaffolding.test_scaffolding_script) ... ok
+test_seed_and_splits (__main__.TestConfigsAndScaffolding.test_seed_and_splits) ... ok
+test_engine_refuses_leakage_columns (__main__.TestLeakageStripping.test_engine_refuses_leakage_columns) ... ok
+test_features_exclude_balance_information (__main__.TestLeakageStripping.test_features_exclude_balance_information) ... ok
+test_loader_never_emits_leakage (__main__.TestLeakageStripping.test_loader_never_emits_leakage) ... ok
+test_bounds_validation (__main__.TestPerturbationGenerator.test_bounds_validation) ... ok
+test_category_semantics (__main__.TestPerturbationGenerator.test_category_semantics) ... ok
+test_determinism (__main__.TestPerturbationGenerator.test_determinism) ... ok
+test_outcome_simulation_and_serialisation (__main__.TestPerturbationGenerator.test_outcome_simulation_and_serialisation) ... ok
+test_rates_honoured (__main__.TestPerturbationGenerator.test_rates_honoured) ... ok
+test_rules_execute_on_causal_features (__main__.TestPerturbationGenerator.test_rules_execute_on_causal_features) ... ok
+test_cash_in_reverses_flow (__main__.TestRollingVelocity.test_cash_in_reverses_flow) ... ok
+test_hand_computed_moments_and_ledger (__main__.TestRollingVelocity.test_hand_computed_moments_and_ledger) ... ok
+test_hand_computed_velocities (__main__.TestRollingVelocity.test_hand_computed_velocities) ... ok
+test_amlsim_v1_and_v2 (__main__.TestStreamLoaders.test_amlsim_v1_and_v2) ... ok
+test_build_loader_and_preprocess_pipeline (__main__.TestStreamLoaders.test_build_loader_and_preprocess_pipeline) ... ok
+test_ieee_cis_sorted_by_transaction_dt (__main__.TestStreamLoaders.test_ieee_cis_sorted_by_transaction_dt) ... ok
+test_paysim_stream (__main__.TestStreamLoaders.test_paysim_stream) ... ok
+test_paysim_unsorted_file_is_sorted (__main__.TestStreamLoaders.test_paysim_unsorted_file_is_sorted) ... D:\Coding\Project\Fraud detection new\src\data\dataset_loaders.py:221: ResourceWarning: unclosed file <_io.TextIOWrapper name='C:\\Users\\heman\\AppData\\Local\\Temp\\tmpj7cj8hbx\\shuffled.csv' mode='r' encoding='utf-8'>
+  raise TemporalOrderError(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_chunked_equals_full (__main__.TestStreamingExactness.test_chunked_equals_full) ... ok
+test_pending_buffer_holds_last_step (__main__.TestStreamingExactness.test_pending_buffer_holds_last_step) ... ok
+test_first_step_has_empty_history (__main__.TestTemporalCausality.test_first_step_has_empty_history) ... ok
+test_future_perturbation_invariance (__main__.TestTemporalCausality.test_future_perturbation_invariance) ... ok
+test_label_blindness (__main__.TestTemporalCausality.test_label_blindness) ... ok
+test_matches_brute_force_reference (__main__.TestTemporalCausality.test_matches_brute_force_reference) ... ok
+test_order_violations_raise (__main__.TestTemporalCausality.test_order_violations_raise) ... ok
+test_within_step_permutation_invariance (__main__.TestTemporalCausality.test_within_step_permutation_invariance) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 7.222s
+
+OK
+PHASE1_EXIT_CODE=0 
+DONE 

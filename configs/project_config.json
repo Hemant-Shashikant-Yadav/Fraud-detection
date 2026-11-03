@@ -1,0 +1,117 @@
+{
+  "project": {
+    "name": "MG-ECFM",
+    "full_title": "Martingale-Gated Epistemic-Conformal Fraud Mitigation: A Statistically Certified Framework for Risk-Aware Prevention, Relational Detection, and Reversible Knowledge Evolution in Digital Payment Systems",
+    "version": "0.1.0",
+    "seed": 42
+  },
+  "paths": {
+    "raw_dir": "data/raw",
+    "processed_dir": "data/processed",
+    "synthetic_dir": "data/synthetic",
+    "rule_feed_dir": "data/synthetic/rule_feeds",
+    "reports_dir": "reports",
+    "manifest_dir": "reports/manifests",
+    "knowledge_store": "data/processed/knowledge_store.sqlite"
+  },
+  "datasets": {
+    "paysim": {
+      "transaction_path": "data/raw/paysim/PS_20174392719_1491204439457_log.csv",
+      "step_seconds": 3600,
+      "chunksize": 500000,
+      "leakage_columns": ["oldbalanceOrg", "newbalanceOrig", "oldbalanceDest", "newbalanceDest"],
+      "rule_artifact_columns": ["isFlaggedFraud"],
+      "tx_types": ["CASH_IN", "CASH_OUT", "DEBIT", "PAYMENT", "TRANSFER"],
+      "inflow_types": ["CASH_IN"],
+      "include_destination": true,
+      "expected_rows": 6362620,
+      "expected_frauds": 8213
+    },
+    "ieee_cis": {
+      "transaction_path": "data/raw/ieee_cis/train_transaction.csv",
+      "identity_path": "data/raw/ieee_cis/train_identity.csv",
+      "step_seconds": 3600,
+      "chunksize": 100000,
+      "entity_columns": ["card1", "addr1", "P_emaildomain"],
+      "destination_columns": [],
+      "identity_columns": ["DeviceType", "DeviceInfo"],
+      "passthrough_columns": ["C1", "C2", "C13", "C14", "D1", "D15", "dist1"],
+      "tx_types": ["W", "H", "C", "S", "R"],
+      "inflow_types": [],
+      "include_destination": false,
+      "subset_rows": 250000,
+      "n_rolling_windows": 50,
+      "window_size": 3000
+    },
+    "amlsim": {
+      "transaction_path": "data/raw/amlsim/tx.csv",
+      "accounts_path": "data/raw/amlsim/accounts.csv",
+      "step_seconds": 86400,
+      "chunksize": 250000,
+      "tx_types": ["TRANSFER", "CASH_IN", "CASH_OUT", "DEBIT", "PAYMENT", "CREDIT", "DEPOSIT", "WIRE", "CHECK"],
+      "inflow_types": ["CASH_IN", "DEPOSIT"],
+      "include_destination": true
+    }
+  },
+  "temporal_splits": {
+    "paysim": {
+      "train": {"start_step": 1, "end_step": 520},
+      "calibration": {"start_step": 521, "end_step": 575},
+      "operating": {"start_step": 576, "end_step": 631},
+      "test": {"start_step": 632, "end_step": 743}
+    }
+  },
+  "expected_split_sizes": {
+    "paysim": {
+      "train": {"transactions": 6082007},
+      "calibration": {"transactions": 118310, "frauds": 578},
+      "operating": {"transactions": 72837, "frauds": 602},
+      "test": {"transactions": 89466}
+    }
+  },
+  "causal_features": {
+    "velocity_windows": [1, 5, 20],
+    "ratio_smoothing": 1.0,
+    "hours_per_day": 24,
+    "strict_step_causality": true
+  },
+  "costs": {
+    "currency": "PaySim monetary units",
+    "c_step": 5.0,
+    "c_hold": 25.0,
+    "c_block_churn": 150.0,
+    "beta_bypass": 0.10,
+    "undetected_fraud_multiplier": 1.0,
+    "loss_normalizer": 10000.0
+  },
+  "recovery": {
+    "settlement_window_hours": 24
+  },
+  "verification": {
+    "label_delay_days_min": 1,
+    "label_delay_days_max": 14
+  },
+  "perturbation": {
+    "n_candidates": 200,
+    "poison_rates": [0.05, 0.10, 0.15, 0.20, 0.25],
+    "min_poison_rate": 0.05,
+    "max_poison_rate": 0.25,
+    "stale_rate": 0.10,
+    "conflict_rate": 0.10,
+    "sybil_share_of_poison": 0.5,
+    "sybil_cluster_size": [3, 8],
+    "sybil_rules_per_cluster": 3,
+    "staleness_horizon_steps": 168,
+    "current_step": 632,
+    "honest_reliability": [0.60, 0.95],
+    "adversarial_reliability": [0.10, 0.35],
+    "honest_observation_range": [20, 200],
+    "fabricated_observation_range": [100, 400],
+    "max_conditions": 3
+  },
+  "evaluation": {
+    "n_drift_windows": 50,
+    "significance_level": 0.05,
+    "primary_metric": "pr_auc"
+  }
+}

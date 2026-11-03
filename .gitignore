@@ -1,0 +1,23 @@
+# --- MG-ECFM generated .gitignore ---
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+.venv/
+venv/
+*.egg-info/
+mlruns/
+
+# Datasets and derived artefacts never enter version control
+.env
+.env.local
+data/raw/**
+data/processed/**
+data/synthetic/**
+!data/**/.gitkeep
+!data/**/
+
+reports/figures/**
+reports/tables/**
+reports/manifests/**
+!reports/**/.gitkeep

@@ -1,0 +1,17 @@
+# Phase 1 (ingestion + causal preprocessing + rule feeds)
+numpy>=1.24
+pandas>=2.0
+pyarrow>=14.0        # Parquet output for processed splits (CSV fallback if absent)
+pytest>=7.4          # optional: `python -m pytest tests -q`
+
+# Phase 2 (temporal-memory GraphSAGE, DAE residual, calibrated XGBoost fusion)
+# CPU wheel: pip install torch --index-url https://download.pytorch.org/whl/cpu
+torch>=2.1
+xgboost>=2.0
+scikit-learn>=1.3
+torch_geometric>=2.4   # optional: an identical pure-PyTorch aggregation is used if absent
+
+# Phase 7-8 (experiments, camera-ready figures, interactive dashboard)
+scipy>=1.10            # optional: only cross-checks the Phase-7 statistics
+matplotlib>=3.7        # 300-DPI publication figures (PDF + PNG) and dashboard plots
+streamlit>=1.32        # interactive dashboard: python main.py --ui

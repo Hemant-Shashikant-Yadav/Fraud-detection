@@ -1,0 +1,269 @@
+{
+  "runtime_seconds": 54.616570799960755,
+  "stages_seconds": {
+    "causal stream + chronological splits": 0.8084014000487514,
+    "fit MG-ECFM + BP1-BP4": 13.734448099974543,
+    "prequential drift evaluation": 2.6290805999888107,
+    "statistical significance": 4.239877799991518,
+    "B1-B5 ablation": 9.150317799998447,
+    "adversarial stress test": 6.784587100031786,
+    "live service": 0.3167881999979727,
+    "latency profile (200 tx)": 2.368402599997353,
+    "save / load service": 0.0950031999964267,
+    "paper tables": 0.10642689996166155,
+    "paper figures": 7.986657000030391
+  },
+  "checks": [
+    {
+      "check": "predictions[mg_ecfm]",
+      "passed": true,
+      "detail": "3115 scored test transactions, mean PR-AUC 0.482"
+    },
+    {
+      "check": "predictions[bp1]",
+      "passed": true,
+      "detail": "3115 scored test transactions, mean PR-AUC 0.476"
+    },
+    {
+      "check": "predictions[bp2]",
+      "passed": true,
+      "detail": "3115 scored test transactions, mean PR-AUC 0.514"
+    },
+    {
+      "check": "predictions[bp3]",
+      "passed": true,
+      "detail": "3115 scored test transactions, mean PR-AUC 0.463"
+    },
+    {
+      "check": "predictions[bp4]",
+      "passed": true,
+      "detail": "3115 scored test transactions, mean PR-AUC 0.498"
+    },
+    {
+      "check": "significance tests",
+      "passed": true,
+      "detail": "McNemar + Wilcoxon + block bootstrap vs BP1-BP4"
+    },
+    {
+      "check": "ablation arms",
+      "passed": true,
+      "detail": "B1_xgboost_only, B2_graph_gate_off, B3_static_crc, B3_adaptive_crc, B4_full_mg_ecfm, B5_assist_off, B5_assist_on"
+    },
+    {
+      "check": "Ville bound (all poisoning rates)",
+      "passed": true,
+      "detail": "exact crossing prob 0.0365 <= alpha"
+    },
+    {
+      "check": "single-transaction scoring",
+      "passed": true,
+      "detail": "'Known mule-network transfer (verified fraud pattern)': p=0.273 -> Step-Up (threshold), 0 KB rules fired"
+    },
+    {
+      "check": "authorisation latency p95 < 5 ms",
+      "passed": true,
+      "detail": "p50=3.45 ms p95=4.83 ms p99=5.28 ms (causal featurisation p50=6.23 ms, timed separately)"
+    },
+    {
+      "check": "camouflage graph",
+      "passed": true,
+      "detail": "38 nodes, 40 neighbour edges, 24 pruned"
+    },
+    {
+      "check": "batch CSV scoring",
+      "passed": true,
+      "detail": "199 rows in 0.518 ms/tx; leakage columns stripped: ['oldbalanceOrg', 'newbalanceOrig', 'oldbalanceDest', 'newbalanceDest', 'isFlaggedFraud']"
+    },
+    {
+      "check": "TD-TPF recovery trace",
+      "passed": true,
+      "detail": "tx 7101: recovered 76.4% after 1 h, 1 accounts frozen"
+    },
+    {
+      "check": "service persistence",
+      "passed": true,
+      "detail": "quick_demo_service.pkl: |p_reload - p| = 0.00e+00"
+    },
+    {
+      "check": "tables",
+      "passed": true,
+      "detail": "4 tables -> paper_tables.tex / .md"
+    },
+    {
+      "check": "figures",
+      "passed": true,
+      "detail": "8 files (4 figures x PDF/PNG, 300 DPI)"
+    },
+    {
+      "check": "runtime < 60s",
+      "passed": true,
+      "detail": "54.6s end-to-end"
+    }
+  ],
+  "all_passed": true,
+  "pooled_metrics": [
+    {
+      "model": "mg_ecfm",
+      "pr_auc_mean": 0.4822463969239023,
+      "f1_mean": 0.44952235091180326,
+      "brier_mean": 0.03574456146238971,
+      "expected_monetary_loss_mean": 859.6101745614048
+    },
+    {
+      "model": "bp1",
+      "pr_auc_mean": 0.47584068824743964,
+      "f1_mean": 0.4722969320548279,
+      "brier_mean": 0.2953892032817793,
+      "expected_monetary_loss_mean": 1081.2775201220056
+    },
+    {
+      "model": "bp2",
+      "pr_auc_mean": 0.5143581418343449,
+      "f1_mean": 0.42120406880700995,
+      "brier_mean": 0.06731259321099267,
+      "expected_monetary_loss_mean": 1505.7039867267144
+    },
+    {
+      "model": "bp3",
+      "pr_auc_mean": 0.463095230134232,
+      "f1_mean": 0.377454304954305,
+      "brier_mean": 0.24242567704809298,
+      "expected_monetary_loss_mean": 1677.7438467831857
+    },
+    {
+      "model": "bp4",
+      "pr_auc_mean": 0.49840565425145933,
+      "f1_mean": 0.5086289791646934,
+      "brier_mean": 0.10745410103063124,
+      "expected_monetary_loss_mean": 991.6029743754185
+    }
+  ],
+  "latency": {
+    "n": 200.0,
+    "p50_ms": 3.450499993050471,
+    "p95_ms": 4.826540019712411,
+    "p99_ms": 5.275849991012362,
+    "max_ms": 5.78720000339672,
+    "mean_ms": 3.6361399991437793,
+    "featurize_p50_ms": 6.226350000360981,
+    "featurize_p95_ms": 8.107215029303916
+  },
+  "example": {
+    "src": "C000000099",
+    "dst": "C000000133",
+    "amount": 150333.28,
+    "tx_type": "TRANSFER",
+    "step": 161,
+    "p_hat": 0.2726799055870797,
+    "risk_score": 0.2726799055870797,
+    "gnn_proba": 0.6182177066802979,
+    "margin": 1.0003975629806519,
+    "action": 1,
+    "action_label": "Step-Up",
+    "route_reason": "threshold",
+    "thresholds": [
+      0.041663385499983836,
+      0.3416633854999704,
+      0.6916633854999703
+    ],
+    "binary_threshold": 0.25,
+    "latency_ms": 5.699000030290335,
+    "component_ms": {
+      "graph_ms": 4.171300039160997,
+      "ae_ms": 0.5218000151216984,
+      "kb_ms": 0.1362999901175499,
+      "tabular_ms": 0.7732000085525215
+    },
+    "route_ms": 0.012899981811642647,
+    "featurize_ms": 9.046899969689548,
+    "expected_loss": {
+      "Approve": 40992.86459699602,
+      "Step-Up": 4104.286459699602,
+      "Hold": 25.0,
+      "Block": 109.09801416193805
+    },
+    "fired_rules": [],
+    "src_flag": "fraud victim",
+    "dst_flag": "fraud beneficiary (mule)",
+    "base_margin": 0.46135950088500977,
+    "ae_residual": 5.3470892906188965,
+    "ae_residual_percentile": 71.7765748031496
+  },
+  "batch_summary": {
+    "n": 199,
+    "seconds": 0.10301610000897199,
+    "ms_per_txn": 0.5176688442661909,
+    "dropped_leakage_columns": [
+      "oldbalanceOrg",
+      "newbalanceOrig",
+      "oldbalanceDest",
+      "newbalanceDest",
+      "isFlaggedFraud"
+    ],
+    "actions": {
+      "Approve": 188,
+      "Step-Up": 9,
+      "Hold": 2
+    },
+    "thresholds": [
+      0.041663385499983836,
+      0.3416633854999704,
+      0.6916633854999703
+    ],
+    "metrics": {
+      "pr_auc": 1.0,
+      "roc_auc": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f2": 1.0,
+      "brier": 0.0026295670986718816,
+      "ece": 0.008030895216824865
+    },
+    "fraud_intercepted_share": 1.0
+  },
+  "outputs": {
+    "dir": "D:\\Coding\\Project\\Fraud detection new\\reports\\quick_demo",
+    "service": "D:\\Coding\\Project\\Fraud detection new\\models\\quick_demo_service.pkl",
+    "tables": {
+      "tex": "D:\\Coding\\Project\\Fraud detection new\\reports\\quick_demo\\paper_tables.tex",
+      "markdown": "D:\\Coding\\Project\\Fraud detection new\\reports\\quick_demo\\paper_tables.md",
+      "tables": {
+        "dataset_summary": {
+          "rows": 7,
+          "columns": 6
+        },
+        "benchmark": {
+          "rows": 5,
+          "columns": 8
+        },
+        "ablation": {
+          "rows": 7,
+          "columns": 13
+        },
+        "stress_test": {
+          "rows": 5,
+          "columns": 11
+        }
+      }
+    },
+    "figures": {
+      "fig1": {
+        "pdf": "D:\\Coding\\Project\\Fraud detection new\\reports\\quick_demo\\figures\\fig1_pr_auc_drift_trajectories.pdf",
+        "png": "D:\\Coding\\Project\\Fraud detection new\\reports\\quick_demo\\figures\\fig1_pr_auc_drift_trajectories.png"
+      },
+      "fig2": {
+        "pdf": "D:\\Coding\\Project\\Fraud detection new\\reports\\quick_demo\\figures\\fig2_martingale_wealth_trajectories.pdf",
+        "png": "D:\\Coding\\Project\\Fraud detection new\\reports\\quick_demo\\figures\\fig2_martingale_wealth_trajectories.png"
+      },
+      "fig3": {
+        "pdf": "D:\\Coding\\Project\\Fraud detection new\\reports\\quick_demo\\figures\\fig3_cs_acrc_threshold_dynamics.pdf",
+        "png": "D:\\Coding\\Project\\Fraud detection new\\reports\\quick_demo\\figures\\fig3_cs_acrc_threshold_dynamics.png"
+      },
+      "fig4": {
+        "pdf": "D:\\Coding\\Project\\Fraud detection new\\reports\\quick_demo\\figures\\fig4_tdtpf_recovery_vs_detection_delay.pdf",
+        "png": "D:\\Coding\\Project\\Fraud detection new\\reports\\quick_demo\\figures\\fig4_tdtpf_recovery_vs_detection_delay.png"
+      }
+    }
+  }
+}

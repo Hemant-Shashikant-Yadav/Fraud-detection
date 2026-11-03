@@ -1,0 +1,378 @@
+=== environment === 
+started 03-11-2026 17:07:29.20 
+Python 3.13.7
+C:\Python313\python.exe
+numpy 2.3.3 pandas 2.3.2 sklearn 1.7.2
+torch 2.15.0+cpu threads 6
+xgboost 3.4.1
+scipy 1.16.3 (used only to cross-check the statistics)
+=== phase 7 tests (drift evaluation, ablation, adversarial stress, significance) === 
+test_assist_layer_is_causal_and_read_only (__main__.TestAblationComponents.test_assist_layer_is_causal_and_read_only) ... ok
+test_recovery_accounting_rules (__main__.TestAblationComponents.test_recovery_accounting_rules) ... ok
+C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch\jit\_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+test_assist_layer_is_decision_independent (__main__.TestAblationRunner.test_assist_layer_is_decision_independent) ... ok
+test_component_switches (__main__.TestAblationRunner.test_component_switches) ... ok
+test_five_point_matrix_written (__main__.TestAblationRunner.test_five_point_matrix_written) ... ok
+test_full_pipeline_recovery (__main__.TestAblationRunner.test_full_pipeline_recovery) ... ok
+test_static_vs_adaptive_conformal_control (__main__.TestAblationRunner.test_static_vs_adaptive_conformal_control) ... ok
+test_exact_binomial_helpers (__main__.TestAdversarialStressTest.test_exact_binomial_helpers) ... ok
+test_false_admission (__main__.TestAdversarialStressTest.test_false_admission) ... ok
+test_rollback_cycles_measured (__main__.TestAdversarialStressTest.test_rollback_cycles_measured) ... ok
+test_sweep_covers_all_rates_and_policies (__main__.TestAdversarialStressTest.test_sweep_covers_all_rates_and_policies) ... ok
+test_ville_maximal_inequality (__main__.TestAdversarialStressTest.test_ville_maximal_inequality) ... ok
+C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+test_label_release_schedule (__main__.TestDriftEvaluator.test_label_release_schedule) ... ok
+test_logged_metrics_are_valid (__main__.TestDriftEvaluator.test_logged_metrics_are_valid) ... ok
+test_no_leakage_from_future_features_and_labels (__main__.TestDriftEvaluator.test_no_leakage_from_future_features_and_labels)
+Corrupting features and labels after window K leaves windows <= K + 1 + delay unchanged. ... ok
+test_no_leakage_truncated_stream (__main__.TestDriftEvaluator.test_no_leakage_truncated_stream)
+Scores of windows 1..K do not depend on whether later windows exist. ... ok
+test_predictions_cover_each_test_transaction_once (__main__.TestDriftEvaluator.test_predictions_cover_each_test_transaction_once) ... ok
+test_run_drift_evaluation_writes_outputs (__main__.TestDriftEvaluator.test_run_drift_evaluation_writes_outputs) ... ok
+test_steps_through_every_window_in_order (__main__.TestDriftEvaluator.test_steps_through_every_window_in_order) ... ok
+test_camouflage_drift_only_moves_later_fraud (__main__.TestDriftWindowsAndMetrics.test_camouflage_drift_only_moves_later_fraud) ... ok
+test_chronological_split_order_and_classes (__main__.TestDriftWindowsAndMetrics.test_chronological_split_order_and_classes) ... ok
+test_classification_metrics_hand_computed (__main__.TestDriftWindowsAndMetrics.test_classification_metrics_hand_computed) ... ok
+test_fifty_step_aligned_windows_cover_test_split (__main__.TestDriftWindowsAndMetrics.test_fifty_step_aligned_windows_cover_test_split) ... ok
+test_operating_threshold_maximises_f1 (__main__.TestDriftWindowsAndMetrics.test_operating_threshold_maximises_f1) ... ok
+test_partition_rejects_invalid_inputs (__main__.TestDriftWindowsAndMetrics.test_partition_rejects_invalid_inputs) ... ok
+test_block_bootstrap_ci (__main__.TestStatisticalSignificance.test_block_bootstrap_ci) ... ok
+test_chi2_survival_function (__main__.TestStatisticalSignificance.test_chi2_survival_function) ... ok
+test_full_significance_report (__main__.TestStatisticalSignificance.test_full_significance_report) ... [error] C:\Users\heman\AppData\Local\Temp\tmps3rj105z\missing.csv not found - run experiments/run_drift_eval.py first
+ok
+test_holm_bonferroni (__main__.TestStatisticalSignificance.test_holm_bonferroni) ... ok
+test_mcnemar_degenerate_and_haldane (__main__.TestStatisticalSignificance.test_mcnemar_degenerate_and_haldane) ... ok
+test_mcnemar_hand_computed (__main__.TestStatisticalSignificance.test_mcnemar_hand_computed) ... ok
+test_wilcoxon_exact_matches_reference (__main__.TestStatisticalSignificance.test_wilcoxon_exact_matches_reference) ... ok
+test_wilcoxon_ties_zeros_and_normal_approximation (__main__.TestStatisticalSignificance.test_wilcoxon_ties_zeros_and_normal_approximation) ... ok
+
+----------------------------------------------------------------------
+Ran 33 tests in 30.850s
+
+OK
+[bp1] McNemar b=202 c=23 chi2=140.818 p=1.764e-32 OR=8.783 | Wilcoxon PR-AUC W+=210.0 W-=0.0 p=1.907e-06 (one-sided 9.537e-07)
+[bp2] McNemar b=198 c=20 chi2=143.711 p=4.109e-33 OR=9.900 | Wilcoxon PR-AUC W+=210.0 W-=0.0 p=1.907e-06 (one-sided 9.537e-07)
+[bp3] McNemar b=143 c=26 chi2=79.621 p=4.535e-19 OR=5.500 | Wilcoxon PR-AUC W+=210.0 W-=0.0 p=1.907e-06 (one-sided 9.537e-07)
+[bp4] McNemar b=250 c=21 chi2=191.823 p=1.272e-43 OR=11.905 | Wilcoxon PR-AUC W+=210.0 W-=0.0 p=1.907e-06 (one-sided 9.537e-07)
+[saved] C:\Users\heman\AppData\Local\Temp\tmps3rj105z\s.json
+PHASE7_EXIT_CODE=0 
+=== phase 6 regression === 
+C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch\jit\_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+test_fit_reports (__main__.TestBaselinesTrainAndPredict.test_fit_reports) ... ok
+test_fit_returns_self (__main__.TestBaselinesTrainAndPredict.test_fit_returns_self) ... ok
+test_inference_is_deterministic (__main__.TestBaselinesTrainAndPredict.test_inference_is_deterministic) ... ok
+test_models_learn_the_fraud_signal (__main__.TestBaselinesTrainAndPredict.test_models_learn_the_fraud_signal) ... ok
+test_predict_is_thresholded_proba (__main__.TestBaselinesTrainAndPredict.test_predict_is_thresholded_proba) ... ok
+test_predict_proba_is_valid_distribution (__main__.TestBaselinesTrainAndPredict.test_predict_proba_is_valid_distribution) ... ok
+test_single_row_scoring (__main__.TestBaselinesTrainAndPredict.test_single_row_scoring) ... ok
+test_training_is_reproducible_with_seed (__main__.TestBaselinesTrainAndPredict.test_training_is_reproducible_with_seed) ... ok
+test_argus_mc_dropout_and_selective_prediction (__main__.TestComponents.test_argus_mc_dropout_and_selective_prediction) ... ok
+test_care_rl_threshold_policy (__main__.TestComponents.test_care_rl_threshold_policy) ... ok
+test_care_top_p_keeps_most_similar_neighbours (__main__.TestComponents.test_care_top_p_keeps_most_similar_neighbours) ... ok
+test_crc_controls_expected_fnr (__main__.TestComponents.test_crc_controls_expected_fnr) ... ok
+test_crc_threshold_hand_computed (__main__.TestComponents.test_crc_threshold_hand_computed) ... ok
+test_jaya_minimises_sphere (__main__.TestComponents.test_jaya_minimises_sphere) ... ok
+test_knn_excludes_self_even_with_duplicates (__main__.TestComponents.test_knn_excludes_self_even_with_duplicates) ... ok
+test_lambda_speed_layer_flags_out_of_distribution (__main__.TestComponents.test_lambda_speed_layer_flags_out_of_distribution) ... ok
+test_shared_preprocessing_helpers (__main__.TestComponents.test_shared_preprocessing_helpers) ... ok
+test_smote_interpolates_between_fraud_neighbours (__main__.TestComponents.test_smote_interpolates_between_fraud_neighbours) ... ok
+test_ssm_kernel_and_causal_conv (__main__.TestComponents.test_ssm_kernel_and_causal_conv) ... ok
+test_default_n_runs_and_batched_mode (__main__.TestLatency.test_default_n_runs_and_batched_mode) ... ok
+test_latency_argument_validation (__main__.TestLatency.test_latency_argument_validation) ... ok
+test_latency_percentiles (__main__.TestLatency.test_latency_percentiles) ... ok
+C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+test_baselines_on_phase1_causal_features (__main__.TestPhaseFeatureCompatibility.test_baselines_on_phase1_causal_features) ... ok
+test_baselines_on_phase2_fusion_width (__main__.TestPhaseFeatureCompatibility.test_baselines_on_phase2_fusion_width) ... ok
+test_care_gnn_relation_views_cover_all_columns (__main__.TestPhaseFeatureCompatibility.test_care_gnn_relation_views_cover_all_columns) ... ok
+test_phase1_frame_has_both_classes_in_training_window (__main__.TestPhaseFeatureCompatibility.test_phase1_frame_has_both_classes_in_training_window) ... ok
+test_accepts_lists_and_pandas (__main__.TestUnifiedInterface.test_accepts_lists_and_pandas) ... ok
+test_factory_aliases_and_config_routing (__main__.TestUnifiedInterface.test_factory_aliases_and_config_routing) ... ok
+test_registry_and_signatures (__main__.TestUnifiedInterface.test_registry_and_signatures) ... ok
+test_unfitted_and_invalid_inputs (__main__.TestUnifiedInterface.test_unfitted_and_invalid_inputs) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 28.138s
+
+OK
+PHASE6_EXIT_CODE=0 
+=== phase 5 regression === 
+test_degraded_rule_rolled_back_and_retraining_scheduled (__main__.TestClosedLoopAdapter.test_degraded_rule_rolled_back_and_retraining_scheduled) ... ok
+test_end_to_end_delayed_stream (__main__.TestClosedLoopAdapter.test_end_to_end_delayed_stream) ... ok
+test_from_config_and_deterministic_replay (__main__.TestClosedLoopAdapter.test_from_config_and_deterministic_replay) ... ok
+test_gate_cycles_respect_interval (__main__.TestClosedLoopAdapter.test_gate_cycles_respect_interval) ... ok
+test_lambda_updated_only_on_release_with_exact_aci_step (__main__.TestClosedLoopAdapter.test_lambda_updated_only_on_release_with_exact_aci_step) ... ok
+test_martingale_wealth_updated_on_release (__main__.TestClosedLoopAdapter.test_martingale_wealth_updated_on_release) ... ok
+test_retrain_volume_and_drift_triggers_with_cooldown (__main__.TestClosedLoopAdapter.test_retrain_volume_and_drift_triggers_with_cooldown) ... ok
+test_full_account_freeze_collateral (__main__.TestRecoverySimulation.test_full_account_freeze_collateral) ... ok
+test_funds_moved_during_reaction_latency_are_followed (__main__.TestRecoverySimulation.test_funds_moved_during_reaction_latency_are_followed) ... ok
+test_instrument_block_and_prevented_loss_ratio (__main__.TestRecoverySimulation.test_instrument_block_and_prevented_loss_ratio) ... ok
+test_merchant_chargeback (__main__.TestRecoverySimulation.test_merchant_chargeback) ... ok
+test_nothing_recovered_outside_window (__main__.TestRecoverySimulation.test_nothing_recovered_outside_window) ... ok
+test_recovered_amount_and_rate_within_24h (__main__.TestRecoverySimulation.test_recovered_amount_and_rate_within_24h) ... ok
+test_recovery_non_increasing_in_detection_delay (__main__.TestRecoverySimulation.test_recovery_non_increasing_in_detection_delay) ... ok
+test_simulate_many_and_aggregate (__main__.TestRecoverySimulation.test_simulate_many_and_aggregate) ... ok
+test_stochastic_mode_reproducible (__main__.TestRecoverySimulation.test_stochastic_mode_reproducible) ... ok
+test_commingled_clean_inflow_dilutes_share (__main__.TestTaintedProportionalFlow.test_commingled_clean_inflow_dilutes_share) ... ok
+test_conservation_and_bounds_on_random_networks (__main__.TestTaintedProportionalFlow.test_conservation_and_bounds_on_random_networks) ... ok
+test_from_config (__main__.TestTaintedProportionalFlow.test_from_config) ... ok
+test_lots_decay_from_their_own_arrival_time (__main__.TestTaintedProportionalFlow.test_lots_decay_from_their_own_arrival_time) ... ok
+test_max_hops_and_min_taint_pruning (__main__.TestTaintedProportionalFlow.test_max_hops_and_min_taint_pruning) ... ok
+test_paysim_amlsim_and_canonical_frames_agree (__main__.TestTaintedProportionalFlow.test_paysim_amlsim_and_canonical_frames_agree) ... ok
+test_paysim_inflow_and_opening_balances (__main__.TestTaintedProportionalFlow.test_paysim_inflow_and_opening_balances) ... ok
+test_three_hop_mule_chain_hand_computed (__main__.TestTaintedProportionalFlow.test_three_hop_mule_chain_hand_computed) ... ok
+test_tracking_stops_at_cash_out_and_external_wire (__main__.TestTaintedProportionalFlow.test_tracking_stops_at_cash_out_and_external_wire) ... ok
+test_window_and_causality (__main__.TestTaintedProportionalFlow.test_window_and_causality) ... ok
+test_decay_telescopes_along_full_transfer_path (__main__.TestTimeDecay.test_decay_telescopes_along_full_transfer_path)
+With full pass-through (share = 1) the product of hop decays is exp(-kappa (tau_n - tau_0)). ... ok
+test_kappa_zero_is_pure_proportional_flow (__main__.TestTimeDecay.test_kappa_zero_is_pure_proportional_flow) ... ok
+test_monotone_in_kappa_and_elapsed_time (__main__.TestTimeDecay.test_monotone_in_kappa_and_elapsed_time) ... ok
+test_single_hop_decay_is_exponential (__main__.TestTimeDecay.test_single_hop_decay_is_exponential) ... ok
+test_clock_and_input_guards (__main__.TestVerificationQueue.test_clock_and_input_guards) ... ok
+test_deterministic_with_seed (__main__.TestVerificationQueue.test_deterministic_with_seed) ... ok
+test_equal_release_times_keep_submission_order (__main__.TestVerificationQueue.test_equal_release_times_keep_submission_order) ... ok
+test_immediate_telemetry_is_separate_from_labels (__main__.TestVerificationQueue.test_immediate_telemetry_is_separate_from_labels) ... ok
+test_labels_held_and_released_chronologically (__main__.TestVerificationQueue.test_labels_held_and_released_chronologically) ... ok
+test_latency_distribution_bounds_and_sources (__main__.TestVerificationQueue.test_latency_distribution_bounds_and_sources) ... ok
+
+----------------------------------------------------------------------
+Ran 36 tests in 0.262s
+
+OK
+PHASE5_EXIT_CODE=0 
+=== phase 4 regression === 
+test_end_to_end_feed_false_admission_and_accuracy (__main__.TestAdmissionGate.test_end_to_end_feed_false_admission_and_accuracy) ... 
+    poison=0.05: false-admission=0.000 admission-accuracy=0.920 active=147 snapshots=369
+
+    poison=0.20: false-admission=0.000 admission-accuracy=0.930 active=119 snapshots=347
+
+    poison=0.25: false-admission=0.000 admission-accuracy=0.925 active=108 snapshots=330
+ok
+test_firing_budget_rejects_undecided_candidates (__main__.TestAdmissionGate.test_firing_budget_rejects_undecided_candidates) ... ok
+test_gate_promotes_into_active_kb_with_certificate (__main__.TestAdmissionGate.test_gate_promotes_into_active_kb_with_certificate) ... ok
+test_plugin_betting_is_valid_and_powerful (__main__.TestAdmissionGate.test_plugin_betting_is_valid_and_powerful) ... ok
+test_promotes_true_high_precision_rules (__main__.TestAdmissionGate.test_promotes_true_high_precision_rules) ... ok
+test_rarely_promotes_useless_rules (__main__.TestAdmissionGate.test_rarely_promotes_useless_rules) ... ok
+test_deterministic_replay (__main__.TestConfigAndDeterminism.test_deterministic_replay) ... ok
+test_from_config (__main__.TestConfigAndDeterminism.test_from_config) ... ok
+test_exact_crossing_probability_matches_monte_carlo (__main__.TestEProcessMathematics.test_exact_crossing_probability_matches_monte_carlo) ... ok
+test_minimum_evidence_to_cross (__main__.TestEProcessMathematics.test_minimum_evidence_to_cross) ... ok
+test_supermartingale_under_composite_null (__main__.TestEProcessMathematics.test_supermartingale_under_composite_null) ... ok
+test_wealth_equals_synopsis_product (__main__.TestEProcessMathematics.test_wealth_equals_synopsis_product) ... ok
+test_active_rules_feed_phase2_fusion_encoder (__main__.TestKnowledgeStore.test_active_rules_feed_phase2_fusion_encoder) ... C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch\jit\_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+ok
+test_active_rules_feed_phase3_router (__main__.TestKnowledgeStore.test_active_rules_feed_phase3_router) ... ok
+test_atomic_rollback_to_snapshot (__main__.TestKnowledgeStore.test_atomic_rollback_to_snapshot) ... ok
+test_fault_injection_leaves_no_partial_state (__main__.TestKnowledgeStore.test_fault_injection_leaves_no_partial_state) ... ok
+test_json_constraints_enforced (__main__.TestKnowledgeStore.test_json_constraints_enforced) ... ok
+test_schema (__main__.TestKnowledgeStore.test_schema) ... ok
+test_snapshots_and_commits (__main__.TestKnowledgeStore.test_snapshots_and_commits) ... ok
+test_thread_safe_concurrent_writers (__main__.TestKnowledgeStore.test_thread_safe_concurrent_writers) ... ok
+test_certified_firing_volume_for_three_cycles (__main__.TestRollbackGate.test_certified_firing_volume_for_three_cycles) ... ok
+test_degraded_admitted_rule_rolled_back (__main__.TestRollbackGate.test_degraded_admitted_rule_rolled_back)
+Genuine rule is admitted by the e-process, then degrades (concept drift / poisoning). ... ok
+test_injected_poisoned_rules_rolled_back_within_three_cycles (__main__.TestRollbackGate.test_injected_poisoned_rules_rolled_back_within_three_cycles) ... 
+    injected poisoned rules: 150/150 rolled back, mean time-to-rollback=1.04 cycles (max 2)
+ok
+test_martingale_delay_grows_with_good_history (__main__.TestRollbackGate.test_martingale_delay_grows_with_good_history)
+Documented property: the product martingale must first repay accumulated losses. ... ok
+test_rollback_restores_snapshot_v_j (__main__.TestRollbackGate.test_rollback_restores_snapshot_v_j) ... ok
+test_additivity_strictly_preserved_under_all_operators (__main__.TestSubjectiveLogic.test_additivity_strictly_preserved_under_all_operators) ... ok
+test_averaging_fusion_is_idempotent (__main__.TestSubjectiveLogic.test_averaging_fusion_is_idempotent) ... ok
+test_cluster_aware_fusion_counters_sybil_amplification (__main__.TestSubjectiveLogic.test_cluster_aware_fusion_counters_sybil_amplification) ... ok
+test_consensus_algebra_and_corroboration (__main__.TestSubjectiveLogic.test_consensus_algebra_and_corroboration) ... ok
+test_cumulative_consensus_hand_computed (__main__.TestSubjectiveLogic.test_cumulative_consensus_hand_computed) ... ok
+test_dogmatic_and_vacuous_limits (__main__.TestSubjectiveLogic.test_dogmatic_and_vacuous_limits) ... ok
+test_evidence_mapping_matches_synopsis (__main__.TestSubjectiveLogic.test_evidence_mapping_matches_synopsis) ... ok
+test_fusion_engine_separates_feed_categories (__main__.TestSubjectiveLogic.test_fusion_engine_separates_feed_categories) ... ok
+test_serialisation_round_trip (__main__.TestSubjectiveLogic.test_serialisation_round_trip) ... ok
+test_time_decay_and_composition (__main__.TestSubjectiveLogic.test_time_decay_and_composition) ... ok
+test_trust_discount_inflates_uncertainty (__main__.TestSubjectiveLogic.test_trust_discount_inflates_uncertainty) ... ok
+test_validation (__main__.TestSubjectiveLogic.test_validation) ... ok
+test_bound_holds_across_sequential_gate_tests (__main__.TestVilleInequality.test_bound_holds_across_sequential_gate_tests)
+Many good rules (FPR = q0) monitored by the full gate for 60 cycles. ... ok
+test_e_detector_average_run_length (__main__.TestVilleInequality.test_e_detector_average_run_length) ... ok
+test_false_admission_frequency_bounded (__main__.TestVilleInequality.test_false_admission_frequency_bounded) ... 
+    Ville (admission, p=p0): empirical=0.0347 exact(2000)=0.0367 bound=0.05
+ok
+test_false_rollback_frequency_bounded (__main__.TestVilleInequality.test_false_rollback_frequency_bounded) ... 
+    Ville (rollback, FPR=q0): empirical=0.0328 exact(5000)=0.0365 bound=0.05
+ok
+
+----------------------------------------------------------------------
+Ran 41 tests in 16.577s
+
+OK
+PHASE4_EXIT_CODE=0 
+=== phase 3 regression === 
+test_from_config (__main__.TestAdaptiveDrift.test_from_config) ... ok
+test_low_base_rate_relaxes_to_permissive_extreme (__main__.TestAdaptiveDrift.test_low_base_rate_relaxes_to_permissive_extreme) ... ok
+test_rolling_fraud_rate_follows_drift (__main__.TestAdaptiveDrift.test_rolling_fraud_rate_follows_drift) ... ok
+test_single_update_matches_synopsis_equation (__main__.TestAdaptiveDrift.test_single_update_matches_synopsis_equation) ... ok
+test_static_mode_is_frozen (__main__.TestAdaptiveDrift.test_static_mode_is_frozen) ... ok
+test_thresholds_track_fraud_rate_drift (__main__.TestAdaptiveDrift.test_thresholds_track_fraud_rate_drift) ... ok
+test_warmup_freezes_thresholds (__main__.TestAdaptiveDrift.test_warmup_freezes_thresholds) ... ok
+test_fraud_held_costs_only_review (__main__.TestHoldAndVerify.test_fraud_held_costs_only_review) ... ok
+test_hold_beats_step_up_on_large_fraud (__main__.TestHoldAndVerify.test_hold_beats_step_up_on_large_fraud) ... ok
+test_portfolio_of_held_frauds (__main__.TestHoldAndVerify.test_portfolio_of_held_frauds) ... ok
+test_certificate_holds_for_adversarial_sequence (__main__.TestLossBound.test_certificate_holds_for_adversarial_sequence) ... ok
+test_cumulative_loss_within_alpha_pm_eps (__main__.TestLossBound.test_cumulative_loss_within_alpha_pm_eps) ... ok
+test_delayed_feedback_preserves_certificate (__main__.TestLossBound.test_delayed_feedback_preserves_certificate) ... ok
+test_feasibility_report (__main__.TestLossBound.test_feasibility_report) ... ok
+test_one_sided_risk_bound_with_rare_fraud (__main__.TestLossBound.test_one_sided_risk_bound_with_rare_fraud) ... ok
+test_rolling_window_within_bound_after_drift (__main__.TestLossBound.test_rolling_window_within_bound_after_drift) ... ok
+test_static_thresholds_break_under_drift (__main__.TestLossBound.test_static_thresholds_break_under_drift) ... ok
+test_all_eight_cells (__main__.TestLossFunction.test_all_eight_cells) ... ok
+test_amount_dependence (__main__.TestLossFunction.test_amount_dependence) ... ok
+test_expected_loss_and_bayes_action (__main__.TestLossFunction.test_expected_loss_and_bayes_action) ... ok
+test_from_project_config (__main__.TestLossFunction.test_from_project_config) ... ok
+test_loss_matrix (__main__.TestLossFunction.test_loss_matrix) ... ok
+test_validation (__main__.TestLossFunction.test_validation) ... ok
+test_vectorised_matches_scalar (__main__.TestLossFunction.test_vectorised_matches_scalar) ... ok
+test_invalid_constraints_rejected (__main__.TestMonotonicity.test_invalid_constraints_rejected) ... ok
+test_projection_is_exact_euclidean_projection (__main__.TestMonotonicity.test_projection_is_exact_euclidean_projection) ... ok
+test_state_round_trip_and_rollback (__main__.TestMonotonicity.test_state_round_trip_and_rollback) ... ok
+test_strict_order_under_aggressive_updates (__main__.TestMonotonicity.test_strict_order_under_aggressive_updates) ... ok
+test_unordered_init_is_projected (__main__.TestMonotonicity.test_unordered_init_is_projected) ... ok
+test_amount_aware_escalation (__main__.TestRouter.test_amount_aware_escalation) ... ok
+test_deterministic_replay (__main__.TestRouter.test_deterministic_replay) ... ok
+test_epistemic_uncertainty (__main__.TestRouter.test_epistemic_uncertainty) ... ok
+test_feedback_updates_controller (__main__.TestRouter.test_feedback_updates_controller) ... ok
+test_from_config (__main__.TestRouter.test_from_config) ... ok
+test_input_validation (__main__.TestRouter.test_input_validation) ... ok
+test_kb_rule_floor (__main__.TestRouter.test_kb_rule_floor) ... ok
+test_route_plus_feedback_under_budget (__main__.TestRouter.test_route_plus_feedback_under_budget) ... ok
+test_sub_millisecond_routing (__main__.TestRouter.test_sub_millisecond_routing) ... 
+    router latency: p50=1.50 us  p95=2.00 us  p99=3.20 us
+ok
+test_threshold_regions (__main__.TestRouter.test_threshold_regions) ... ok
+test_tuple_and_scored_event_inputs (__main__.TestRouter.test_tuple_and_scored_event_inputs) ... ok
+
+----------------------------------------------------------------------
+Ran 40 tests in 4.680s
+
+OK
+PHASE3_EXIT_CODE=0 
+=== phase 2 regression === 
+C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch\jit\_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+test_anomalies_have_larger_residual (__main__.TestAutoencoderResidual.test_anomalies_have_larger_residual) ... ok
+test_residual_matches_definition (__main__.TestAutoencoderResidual.test_residual_matches_definition) ... ok
+test_filtered_message_passing_ignores_camouflage (__main__.TestCamouflageGraphSAGE.test_filtered_message_passing_ignores_camouflage) ... ok
+test_fit_stream_trains_all_components (__main__.TestCamouflageGraphSAGE.test_fit_stream_trains_all_components) ... C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+ok
+test_pyg_and_fallback_agree (__main__.TestCamouflageGraphSAGE.test_pyg_and_fallback_agree) ... C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+ok
+test_sage_layer_formula (__main__.TestCamouflageGraphSAGE.test_sage_layer_formula) ... ok
+test_single_event_latency_under_budget (__main__.TestCamouflageGraphSAGE.test_single_event_latency_under_budget)
+Full-size config (d_s=64, 128->64, fanouts 15/10) on a dense graph. ... ok
+test_stream_embeddings_are_causal (__main__.TestCamouflageGraphSAGE.test_stream_embeddings_are_causal) ... C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+ok
+test_within_step_permutation_invariance (__main__.TestCamouflageGraphSAGE.test_within_step_permutation_invariance) ... C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+ok
+C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+test_calibrated_risk_bounded_on_future_split (__main__.TestFusionClassifier.test_calibrated_risk_bounded_on_future_split) ... ok
+test_end_to_end_latency_under_budget (__main__.TestFusionClassifier.test_end_to_end_latency_under_budget) ... ok
+test_full_size_fusion_latency (__main__.TestFusionClassifier.test_full_size_fusion_latency)
+Default hyperparams (600 trees, d_s=64, 128->64 GraphSAGE). ... C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+ok
+test_fusion_vector_layout (__main__.TestFusionClassifier.test_fusion_vector_layout) ... ok
+test_kb_encoder_frame_event_consistency (__main__.TestFusionClassifier.test_kb_encoder_frame_event_consistency) ... ok
+test_rejects_leakage_and_overlapping_splits (__main__.TestFusionClassifier.test_rejects_leakage_and_overlapping_splits) ... C:\Users\heman\AppData\Roaming\Python\Python313\site-packages\torch_geometric\inspector.py:433: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+  return typing._eval_type(value, _globals, None)  # type: ignore
+ok
+test_label_aware_training_breaks_camouflage (__main__.TestSimilarityFilter.test_label_aware_training_breaks_camouflage) ... ok
+test_rank_within_centre (__main__.TestSimilarityFilter.test_rank_within_centre) ... ok
+test_similarity_formula (__main__.TestSimilarityFilter.test_similarity_formula) ... ok
+test_threshold_pruning_removes_camouflaged_edges (__main__.TestSimilarityFilter.test_threshold_pruning_removes_camouflaged_edges) ... ok
+test_top_p_and_min_neighbour_modes (__main__.TestSimilarityFilter.test_top_p_and_min_neighbour_modes) ... ok
+test_calibrated_risk_is_bounded_and_monotone (__main__.TestTabularEngine.test_calibrated_risk_is_bounded_and_monotone) ... ok
+test_calibration_improves_brier (__main__.TestTabularEngine.test_calibration_improves_brier) ... ok
+test_cost_sensitive_weighting (__main__.TestTabularEngine.test_cost_sensitive_weighting) ... ok
+test_venn_abers_engine_interval (__main__.TestTabularEngine.test_venn_abers_engine_interval) ... ok
+test_venn_abers_exact_against_brute_force (__main__.TestTabularEngine.test_venn_abers_exact_against_brute_force) ... ok
+test_batch_commit_equals_sequential_updates (__main__.TestTemporalMemory.test_batch_commit_equals_sequential_updates) ... ok
+test_constant_time_read_and_update (__main__.TestTemporalMemory.test_constant_time_read_and_update) ... ok
+test_event_states_do_not_see_same_batch (__main__.TestTemporalMemory.test_event_states_do_not_see_same_batch) ... ok
+test_exponential_decay_formula (__main__.TestTemporalMemory.test_exponential_decay_formula) ... ok
+test_export_load_roundtrip_and_scaler (__main__.TestTemporalMemory.test_export_load_roundtrip_and_scaler) ... ok
+test_gradient_reaches_w_mem_but_not_memory (__main__.TestTemporalMemory.test_gradient_reaches_w_mem_but_not_memory) ... ok
+test_unseen_and_stale_nodes_read_zero (__main__.TestTemporalMemory.test_unseen_and_stale_nodes_read_zero) ... ok
+
+----------------------------------------------------------------------
+Ran 32 tests in 8.873s
+
+OK
+
+[latency] GraphSAGE embed_event p50=2.88 ms p95=4.10 ms (mean edges=331)
+
+[latency] fused score_event p50=3.16 ms p95=4.44 ms p99=4.98 ms
+
+[latency] full-size fused score_event p50=3.89 ms p95=5.47 ms
+PHASE2_EXIT_CODE=0 
+=== phase 1 regression === 
+test_assign_split (__main__.TestConfigsAndScaffolding.test_assign_split) ... ok
+test_hyperparams_sections (__main__.TestConfigsAndScaffolding.test_hyperparams_sections) ... ok
+test_overlapping_splits_rejected (__main__.TestConfigsAndScaffolding.test_overlapping_splits_rejected) ... ok
+test_scaffolding_script (__main__.TestConfigsAndScaffolding.test_scaffolding_script) ... ok
+test_seed_and_splits (__main__.TestConfigsAndScaffolding.test_seed_and_splits) ... ok
+test_engine_refuses_leakage_columns (__main__.TestLeakageStripping.test_engine_refuses_leakage_columns) ... ok
+test_features_exclude_balance_information (__main__.TestLeakageStripping.test_features_exclude_balance_information) ... ok
+test_loader_never_emits_leakage (__main__.TestLeakageStripping.test_loader_never_emits_leakage) ... ok
+test_bounds_validation (__main__.TestPerturbationGenerator.test_bounds_validation) ... ok
+test_category_semantics (__main__.TestPerturbationGenerator.test_category_semantics) ... ok
+test_determinism (__main__.TestPerturbationGenerator.test_determinism) ... ok
+test_outcome_simulation_and_serialisation (__main__.TestPerturbationGenerator.test_outcome_simulation_and_serialisation) ... ok
+test_rates_honoured (__main__.TestPerturbationGenerator.test_rates_honoured) ... ok
+test_rules_execute_on_causal_features (__main__.TestPerturbationGenerator.test_rules_execute_on_causal_features) ... ok
+test_cash_in_reverses_flow (__main__.TestRollingVelocity.test_cash_in_reverses_flow) ... ok
+test_hand_computed_moments_and_ledger (__main__.TestRollingVelocity.test_hand_computed_moments_and_ledger) ... ok
+test_hand_computed_velocities (__main__.TestRollingVelocity.test_hand_computed_velocities) ... ok
+test_amlsim_v1_and_v2 (__main__.TestStreamLoaders.test_amlsim_v1_and_v2) ... ok
+test_build_loader_and_preprocess_pipeline (__main__.TestStreamLoaders.test_build_loader_and_preprocess_pipeline) ... ok
+test_ieee_cis_sorted_by_transaction_dt (__main__.TestStreamLoaders.test_ieee_cis_sorted_by_transaction_dt) ... ok
+test_paysim_stream (__main__.TestStreamLoaders.test_paysim_stream) ... ok
+test_paysim_unsorted_file_is_sorted (__main__.TestStreamLoaders.test_paysim_unsorted_file_is_sorted) ... D:\Coding\Project\Fraud detection new\src\data\dataset_loaders.py:221: ResourceWarning: unclosed file <_io.TextIOWrapper name='C:\\Users\\heman\\AppData\\Local\\Temp\\tmpa0uwe64q\\shuffled.csv' mode='r' encoding='utf-8'>
+  raise TemporalOrderError(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_chunked_equals_full (__main__.TestStreamingExactness.test_chunked_equals_full) ... ok
+test_pending_buffer_holds_last_step (__main__.TestStreamingExactness.test_pending_buffer_holds_last_step) ... ok
+test_first_step_has_empty_history (__main__.TestTemporalCausality.test_first_step_has_empty_history) ... ok
+test_future_perturbation_invariance (__main__.TestTemporalCausality.test_future_perturbation_invariance) ... ok
+test_label_blindness (__main__.TestTemporalCausality.test_label_blindness) ... ok
+test_matches_brute_force_reference (__main__.TestTemporalCausality.test_matches_brute_force_reference) ... ok
+test_order_violations_raise (__main__.TestTemporalCausality.test_order_violations_raise) ... ok
+test_within_step_permutation_invariance (__main__.TestTemporalCausality.test_within_step_permutation_invariance) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 7.074s
+
+OK
+PHASE1_EXIT_CODE=0 
+=== summary === 
+RUN_COUNTS [33, 30, 36, 41, 40, 32, 30]
+TOTAL_TESTS_RUN 242
+TOTAL_SKIPPED 0
+P7=0 P6=0 P5=0 P4=0 P3=0 P2=0 P1=0 
+OVERALL_EXIT_CODE=0 
+finished 03-11-2026 17:09:43.47 
+DONE 
