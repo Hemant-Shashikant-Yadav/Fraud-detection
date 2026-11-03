@@ -30,6 +30,7 @@ import torch
 from torch import nn
 
 from src.graph.temporal_memory import SignedLogStandardizer
+from src.utils.device import resolve_device
 
 SEED = 42
 
@@ -142,7 +143,8 @@ class AutoencoderResidualEngine:
         self.config = config
         self.seed = int(seed)
         self.scaler = SignedLogStandardizer()
-        self.model = DenoisingAutoencoder(config, seed=self.seed)
+        self.device = resolve_device(getattr(config, "device", None))
+        self.model = DenoisingAutoencoder(config, seed=self.seed).to(self.device)
         self.history: List[Dict[str, float]] = []
         self.best_epoch: Optional[int] = None
 
@@ -187,7 +189,7 @@ class AutoencoderResidualEngine:
             perm = torch.randperm(xt.shape[0], generator=gen)
             total = 0.0
             for b0 in range(0, xt.shape[0], cfg.batch_size):
-                batch = xt[perm[b0:b0 + cfg.batch_size]]
+                batch = xt[perm[b0:b0 + cfg.batch_size]].to(self.device)
                 recon = self.model(self.model.corrupt(batch, gen))
                 loss = loss_fn(recon, batch)
                 opt.zero_grad()
@@ -197,7 +199,7 @@ class AutoencoderResidualEngine:
             train_loss = total / max(xt.shape[0], 1)
             self.model.eval()
             with torch.no_grad():
-                ref = xv if xv is not None else xt
+                ref = (xv if xv is not None else xt).to(self.device)
                 val_loss = float(loss_fn(self.model(ref), ref))
             self.history.append({"epoch": float(epoch), "train_mse": train_loss, "val_mse": val_loss})
             if verbose:
@@ -225,8 +227,8 @@ class AutoencoderResidualEngine:
         out = np.empty(x.shape[0], dtype=np.float64)
         with torch.no_grad():
             for b0 in range(0, x.shape[0], batch_size):
-                xb = self._tensor(x[b0:b0 + batch_size])
-                out[b0:b0 + batch_size] = self.model.residual(xb).double().numpy()
+                xb = self._tensor(x[b0:b0 + batch_size]).to(self.device)
+                out[b0:b0 + batch_size] = self.model.residual(xb).cpu().double().numpy()
         return out
 
     def residual_one(self, features: np.ndarray) -> float:

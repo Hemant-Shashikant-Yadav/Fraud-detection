@@ -252,16 +252,19 @@ class TabularEngineConfig:
 
     _PARAM_KEYS = ("objective", "eval_metric", "tree_method", "max_depth", "learning_rate",
                    "subsample", "colsample_bytree", "min_child_weight", "gamma",
-                   "reg_lambda", "reg_alpha", "max_bin")
+                   "reg_lambda", "reg_alpha", "max_bin", "device")
 
     @classmethod
     def from_hyperparams(cls, hyperparams: Mapping, **overrides) -> "TabularEngineConfig":
+        from src.utils.device import resolve_xgb_device
         xg = dict(hyperparams.get("xgboost", {})) if hyperparams else {}
         cs = xg.get("cost_sensitive", {})
         cal = xg.get("calibration", {})
         base = cls()
         params = dict(base.params)
         params.update({k: xg[k] for k in cls._PARAM_KEYS if k in xg})
+        if "device" not in params:
+            params["device"] = resolve_xgb_device()
         kwargs = dict(
             params=params,
             n_estimators=int(xg.get("n_estimators", 600)),

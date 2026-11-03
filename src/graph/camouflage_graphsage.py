@@ -54,6 +54,7 @@ from src.graph.similarity_filter import (
     SimilarityFilterConfig,
 )
 from src.graph.temporal_memory import TemporalMemoryConfig, TemporalNodeMemory
+from src.utils.device import resolve_device
 
 SEED = 42
 MISSING_ENTITY = ""
@@ -89,7 +90,7 @@ if HAS_PYG:
 def scatter_aggregate(x: torch.Tensor, edge_index: torch.Tensor, aggr: str) -> torch.Tensor:
     """Pure-PyTorch neighbour aggregation (empty neighbourhoods -> 0)."""
     n, d = x.shape
-    out = torch.zeros(n, d, dtype=x.dtype)
+    out = torch.zeros(n, d, dtype=x.dtype, device=x.device)
     if edge_index.numel() == 0:
         return out
     src, dst = edge_index[0], edge_index[1]
@@ -287,6 +288,7 @@ class CamouflageResistantGraphSAGE(nn.Module):
         super().__init__()
         self.config = config
         self.seed = int(seed)
+        self.device = resolve_device(getattr(config, "device", None))
         with torch.random.fork_rng():
             torch.manual_seed(self.seed)
             self.memory = TemporalNodeMemory(config.memory, seed=self.seed)
@@ -299,6 +301,7 @@ class CamouflageResistantGraphSAGE(nn.Module):
             ])
             self.head = nn.Linear(2 * config.out_dim, 1)
         self.dropout = nn.Dropout(config.dropout)
+        self.to(self.device)
         self.neighbors = TemporalNeighborIndex(max(config.fanouts))
         self._node_label: Dict[int, int] = {}
         self.training_history: List[Dict[str, float]] = []
@@ -404,6 +407,8 @@ class CamouflageResistantGraphSAGE(nn.Module):
     # ------------------------------------------------------------ forward
     def propagate(self, states: torch.Tensor, edge_index: torch.Tensor) -> Tuple[torch.Tensor, FilterResult]:
         """Camouflage filtering followed by the GraphSAGE layer stack."""
+        states = states.to(self.device)
+        edge_index = edge_index.to(self.device)
         filt = self.similarity.filter_edges(states, edge_index, n_nodes=states.shape[0])
         h = states
         for layer, conv in enumerate(self.convs):
@@ -465,13 +470,13 @@ class CamouflageResistantGraphSAGE(nn.Module):
     # ----------------------------------------------------------- training
     def _similarity_loss(self, batch: SubgraphBatch, labels: torch.Tensor) -> torch.Tensor:
         if batch.edge_index.numel() == 0:
-            return torch.zeros(())
+            return torch.zeros((), device=labels.device)
         n = batch.n_events
         hist_labels = [self._node_label.get(g, 0) for g in batch.hist_global]
         node_y = torch.cat([labels, labels,
-                            torch.as_tensor(hist_labels, dtype=labels.dtype)])
-        states = batch.states.detach()
-        ei = batch.edge_index
+                            torch.as_tensor(hist_labels, dtype=labels.dtype, device=labels.device)])
+        states = batch.states.detach().to(self.device)
+        ei = batch.edge_index.to(self.device)
         return self.similarity.label_aware_loss(states[ei[1]], states[ei[0]],
                                                 node_y[ei[1]], node_y[ei[0]])
 
@@ -493,7 +498,7 @@ class CamouflageResistantGraphSAGE(nn.Module):
         msg_all = self.memory.build_message_input(features, amounts)
         pos = float(labels.sum())
         neg = float(labels.shape[0] - pos)
-        pos_weight = torch.tensor(min(cfg.max_pos_weight, neg / max(pos, 1.0)))
+        pos_weight = torch.tensor(min(cfg.max_pos_weight, neg / max(pos, 1.0)), device=self.device)
         opt = torch.optim.Adam(self.parameters(), lr=cfg.learning_rate,
                                weight_decay=cfg.weight_decay)
         torch.manual_seed(self.seed)
@@ -514,7 +519,7 @@ class CamouflageResistantGraphSAGE(nn.Module):
                     src_g, dst_g = self._register_events(src_keys[b0:b1], dst_keys[b0:b1])
                     times = torch.full((b1 - b0,), float(steps[b0]), dtype=torch.float64)
                     batch = self.build_subgraph(src_g, dst_g, msg_all[b0:b1], times)
-                    y = torch.from_numpy(labels[b0:b1])
+                    y = torch.from_numpy(labels[b0:b1]).to(self.device)
                     out = self.forward_subgraph(batch)
                     cls_loss = F.binary_cross_entropy_with_logits(
                         out["logits"], y, pos_weight=pos_weight)
@@ -570,9 +575,9 @@ class CamouflageResistantGraphSAGE(nn.Module):
                 times = torch.full((b1 - b0,), float(steps[b0]), dtype=torch.float64)
                 batch = self.build_subgraph(src_g, dst_g, msg_all[b0:b1], times)
                 out = self.forward_subgraph(batch)
-                h_src[b0:b1] = out["h_src"].numpy()
-                h_dst[b0:b1] = out["h_dst"].numpy()
-                prob[b0:b1] = torch.sigmoid(out["logits"]).double().numpy()
+                h_src[b0:b1] = out["h_src"].detach().cpu().numpy()
+                h_dst[b0:b1] = out["h_dst"].detach().cpu().numpy()
+                prob[b0:b1] = torch.sigmoid(out["logits"]).double().detach().cpu().numpy()
                 pending.append((batch, None if labels is None else np.asarray(labels)[b0:b1]))
             self.commit_step(pending)
         return {"h_src": h_src, "h_dst": h_dst, "gnn_proba": prob}
@@ -598,9 +603,9 @@ class CamouflageResistantGraphSAGE(nn.Module):
             self.commit(batch)
         latency_ms = (time.perf_counter() - t0) * 1000.0
         return {
-            "h_src": out["h_src"][0].numpy().copy(),
-            "h_dst": out["h_dst"][0].numpy().copy(),
-            "gnn_proba": float(torch.sigmoid(out["logits"][0])),
+            "h_src": out["h_src"][0].detach().cpu().numpy().copy(),
+            "h_dst": out["h_dst"][0].detach().cpu().numpy().copy(),
+            "gnn_proba": float(torch.sigmoid(out["logits"][0]).detach().cpu()),
             "latency_ms": latency_ms,
             "n_edges": int(batch.edge_index.shape[1]),
             "n_kept_edges": int(out["filter"].keep_mask.sum()) if batch.edge_index.numel() else 0,

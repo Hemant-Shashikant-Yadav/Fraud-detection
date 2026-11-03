@@ -38,6 +38,8 @@ import numpy as np
 import torch
 from torch import nn
 
+from src.utils.device import resolve_device
+
 SEED = 42
 EPS = 1e-12
 
@@ -217,7 +219,7 @@ class BaselineModel(ABC):
         self.n_features_in_: Optional[int] = None
         self.is_fitted_: bool = False
         self.fit_report_: Dict[str, Any] = {}
-        self.device = torch.device("cpu")
+        self.device = resolve_device()
 
     # ------------------------------------------------------------ public API
     def fit(self, X: Any, y: Any) -> "BaselineModel":
@@ -315,9 +317,8 @@ class BaselineModel(ABC):
     def _rng(self, offset: int = 0) -> np.random.Generator:
         return np.random.default_rng(self.seed + offset)
 
-    @staticmethod
-    def _to_tensor(a: np.ndarray, dtype=torch.float32) -> torch.Tensor:
-        return torch.as_tensor(np.ascontiguousarray(a), dtype=dtype)
+    def _to_tensor(self, a: np.ndarray, dtype=torch.float32) -> torch.Tensor:
+        return torch.as_tensor(np.ascontiguousarray(a), dtype=dtype, device=self.device)
 
 
 class EarlyStopper:

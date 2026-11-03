@@ -127,7 +127,7 @@ class CamouflageSimilarityFilter(nn.Module):
     def edge_similarity(self, states: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """Similarity of each edge ``(w -> u)`` of ``edge_index`` (row0 = w, row1 = u)."""
         if edge_index.numel() == 0:
-            return torch.zeros(0, dtype=states.dtype)
+            return torch.zeros(0, dtype=states.dtype, device=states.device)
         return self.forward(states[edge_index[1]], states[edge_index[0]])
 
     # ------------------------------------------------------------- pruning
@@ -136,16 +136,16 @@ class CamouflageSimilarityFilter(nn.Module):
         """0-based rank of every edge among edges sharing its centre (desc. score)."""
         e = centres.shape[0]
         if e == 0:
-            return torch.zeros(0, dtype=torch.long)
+            return torch.zeros(0, dtype=torch.long, device=centres.device)
         order = torch.sort(scores, descending=True, stable=True).indices
         order = order[torch.sort(centres[order], stable=True).indices]
         sorted_centres = centres[order]
-        positions = torch.arange(e, dtype=torch.long)
-        is_start = torch.ones(e, dtype=torch.bool)
+        positions = torch.arange(e, dtype=torch.long, device=centres.device)
+        is_start = torch.ones(e, dtype=torch.bool, device=centres.device)
         is_start[1:] = sorted_centres[1:] != sorted_centres[:-1]
         group_start = torch.cummax(torch.where(is_start, positions, torch.zeros_like(positions)), 0).values
         ranks_sorted = positions - group_start
-        ranks = torch.empty(e, dtype=torch.long)
+        ranks = torch.empty(e, dtype=torch.long, device=centres.device)
         ranks[order] = ranks_sorted
         return ranks
 
@@ -155,7 +155,7 @@ class CamouflageSimilarityFilter(nn.Module):
         cfg = self.config
         e = centres.shape[0]
         if e == 0:
-            return torch.zeros(0, dtype=torch.bool)
+            return torch.zeros(0, dtype=torch.bool, device=centres.device)
         n = int(n_nodes) if n_nodes is not None else int(centres.max()) + 1
         ranks = self.rank_within_centre(centres, scores)
         degree = torch.bincount(centres, minlength=n)
@@ -171,11 +171,11 @@ class CamouflageSimilarityFilter(nn.Module):
     def filter_edges(self, states: torch.Tensor, edge_index: torch.Tensor,
                      n_nodes: Optional[int] = None) -> FilterResult:
         """Prune camouflaged edges; returns the filtered ``edge_index`` and scores."""
-        edge_index = torch.as_tensor(edge_index, dtype=torch.long)
+        edge_index = torch.as_tensor(edge_index, dtype=torch.long, device=states.device)
         if edge_index.numel() == 0:
-            empty = torch.zeros(0, dtype=states.dtype)
+            empty = torch.zeros(0, dtype=states.dtype, device=states.device)
             return FilterResult(edge_index.reshape(2, 0), empty,
-                                torch.zeros(0, dtype=torch.bool), empty)
+                                torch.zeros(0, dtype=torch.bool, device=states.device), empty)
         sim = self.edge_similarity(states, edge_index)
         keep = self.keep_mask(edge_index[1], sim.detach(),
                               n_nodes if n_nodes is not None else states.shape[0])
@@ -192,7 +192,7 @@ class CamouflageSimilarityFilter(nn.Module):
                          balance: bool = True) -> torch.Tensor:
         """Class-balanced BCE between ``S(u, w)`` and the same-class indicator."""
         if s_u.shape[0] == 0:
-            return torch.zeros((), dtype=torch.float32, requires_grad=False)
+            return torch.zeros((), dtype=torch.float32, device=s_u.device, requires_grad=False)
         target = self.label_aware_targets(y_u, y_w)
         logit = self.logits(s_u, s_w)
         if balance:

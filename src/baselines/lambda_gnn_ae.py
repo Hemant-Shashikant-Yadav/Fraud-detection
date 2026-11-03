@@ -213,7 +213,7 @@ class LambdaGNNAutoencoder(BaselineModel):
     def _train_gnn(self, y_ref: np.ndarray, w: torch.Tensor, Z_val: Optional[torch.Tensor],
                    nb_val: Optional[torch.Tensor], y_val: Optional[torch.Tensor]) -> Dict[str, float]:
         cfg = self.config
-        y_t = torch.as_tensor(y_ref, dtype=torch.long)
+        y_t = torch.as_tensor(y_ref, dtype=torch.long, device=self.device)
         opt = torch.optim.Adam(self.gnn.parameters(), lr=cfg.learning_rate,
                                weight_decay=cfg.weight_decay)
         stopper = EarlyStopper(cfg.patience)
@@ -223,7 +223,7 @@ class LambdaGNNAutoencoder(BaselineModel):
         for epoch in range(cfg.gnn_epochs):
             self.gnn.train()
             for idx in iterate_minibatches(y_ref.size, cfg.gnn_batch_size, rng):
-                nodes = torch.as_tensor(idx, dtype=torch.long)
+                nodes = torch.as_tensor(idx, dtype=torch.long, device=self.device)
                 h = self.gnn.embed_reference(nodes, L, self.X_ref, self.nbr_table)
                 loss = F.cross_entropy(self.gnn.head(h), y_t[nodes], weight=w)
                 opt.zero_grad()
@@ -255,9 +255,9 @@ class LambdaGNNAutoencoder(BaselineModel):
                 loss.backward()
                 opt.step()
                 last = float(loss.item())
-        self.ae.eval()
+            self.ae.eval()
         with torch.no_grad():
-            err = self.ae.reconstruction_loss(Z_legit).numpy()
+            err = self.ae.reconstruction_loss(Z_legit).cpu().numpy()
         self.ae_scale_ = float(max(np.median(err), 1e-8))
         return {"ae_last_train_loss": last, "ae_median_legit_error": self.ae_scale_}
 
@@ -265,12 +265,12 @@ class LambdaGNNAutoencoder(BaselineModel):
     def reconstruction_score(self, Z: torch.Tensor) -> np.ndarray:
         """``log(L(x, g(f(x))) / median legit loss)`` - the speed-layer signal."""
         self.ae.eval()
-        err = self.ae.reconstruction_loss(Z).double().numpy()
+        err = self.ae.reconstruction_loss(Z).double().cpu().numpy()
         return np.log((err + 1e-12) / self.ae_scale_)
 
     # ---------------------------------------------------------- serving layer
     def _components(self, Z: torch.Tensor, nb: torch.Tensor) -> np.ndarray:
-        logits = self._gnn_logits_new(Z, nb).double().numpy()
+        logits = self._gnn_logits_new(Z, nb).double().cpu().numpy()
         gnn_log_odds = logits[:, 1] - logits[:, 0]
         return np.column_stack([gnn_log_odds, self.reconstruction_score(Z)])
 
@@ -287,25 +287,25 @@ class LambdaGNNAutoencoder(BaselineModel):
         # batch-layer graph over the reference (training) transactions
         self.knn.fit(Z_ref)
         self.X_ref = self._to_tensor(Z_ref)
-        self.nbr_table = torch.as_tensor(self.knn.train_neighbors(Z_ref), dtype=torch.long)
+        self.nbr_table = torch.as_tensor(self.knn.train_neighbors(Z_ref), dtype=torch.long, device=self.device)
         w = torch.as_tensor(cost_sensitive_class_weights(
-            y_ref, cfg.fn_cost, cfg.fp_cost, cfg.balance_classes))
+            y_ref, cfg.fn_cost, cfg.fp_cost, cfg.balance_classes), device=self.device)
 
         Z_val = self._to_tensor(Z[tail]) if use_val else None
-        nb_val = torch.as_tensor(self.knn.query(Z[tail]), dtype=torch.long) if use_val else None
-        y_val = torch.as_tensor(y[tail], dtype=torch.long) if use_val else None
+        nb_val = torch.as_tensor(self.knn.query(Z[tail]), dtype=torch.long, device=self.device) if use_val else None
+        y_val = torch.as_tensor(y[tail], dtype=torch.long, device=self.device) if use_val else None
 
-        self.gnn = BatchLayerGNN(X.shape[1], cfg)
+        self.gnn = BatchLayerGNN(X.shape[1], cfg).to(self.device)
         report = self._train_gnn(y_ref, w, Z_val, nb_val, y_val)
 
-        self.ae = SpeedLayerAutoencoder(X.shape[1], cfg.ae_hidden, cfg.ae_latent)
-        report.update(self._train_ae(self.X_ref[torch.as_tensor(y_ref == 0)]))
+        self.ae = SpeedLayerAutoencoder(X.shape[1], cfg.ae_hidden, cfg.ae_latent).to(self.device)
+        report.update(self._train_ae(self.X_ref[torch.as_tensor(y_ref == 0, device=self.device)]))
 
         # serving-layer combiner on rows the GNN never trained on
         if use_val:
             comb_X, comb_y = self._components(Z_val, nb_val), y[tail]
         else:
-            nb_self = torch.as_tensor(self.knn.query(Z_ref), dtype=torch.long)
+            nb_self = torch.as_tensor(self.knn.query(Z_ref), dtype=torch.long, device=self.device)
             comb_X, comb_y = self._components(self.X_ref, nb_self), y_ref
         self.combiner = LogisticRegression(C=cfg.combiner_C, class_weight="balanced",
                                            max_iter=1000, random_state=self.seed)
@@ -324,7 +324,7 @@ class LambdaGNNAutoencoder(BaselineModel):
     def _predict_fraud_proba(self, X: np.ndarray) -> np.ndarray:
         Z_np = self.scaler.transform(X)
         Z = self._to_tensor(Z_np)
-        nb = torch.as_tensor(self.knn.query(Z_np), dtype=torch.long)
+        nb = torch.as_tensor(self.knn.query(Z_np), dtype=torch.long, device=self.device)
         return self.combiner.predict_proba(self._components(Z, nb))[:, 1]
 
     def layer_scores(self, X: np.ndarray) -> Dict[str, np.ndarray]:
@@ -333,6 +333,6 @@ class LambdaGNNAutoencoder(BaselineModel):
 
         self._check_fitted()
         Z_np = self.scaler.transform(check_X(X, self.n_features_in_))
-        nb = torch.as_tensor(self.knn.query(Z_np), dtype=torch.long)
+        nb = torch.as_tensor(self.knn.query(Z_np), dtype=torch.long, device=self.device)
         comp = self._components(self._to_tensor(Z_np), nb)
         return {"gnn_log_odds": comp[:, 0], "ae_log_recon": comp[:, 1]}

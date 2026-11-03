@@ -533,9 +533,9 @@ class MGECFMService:
         roles: Dict[int, str] = {0: "sender", n_ev: "receiver"}
         for j, g in enumerate(batch.hist_global):
             keys[2 * n_ev + j] = str(graph.memory.key_of(g))
-        ei = batch.edge_index.numpy()
-        sim = filt.similarity.detach().numpy() if filt.similarity.numel() else np.zeros(0)
-        keep = filt.keep_mask.detach().numpy() if filt.keep_mask.numel() else np.zeros(0, dtype=bool)
+        ei = batch.edge_index.cpu().numpy()
+        sim = filt.similarity.detach().cpu().numpy() if filt.similarity.numel() else np.zeros(0)
+        keep = filt.keep_mask.detach().cpu().numpy() if filt.keep_mask.numel() else np.zeros(0, dtype=bool)
         hop: Dict[int, int] = {0: 0, n_ev: 0}
         anchor: Dict[int, int] = {}
         for k in range(ei.shape[1]):

@@ -385,6 +385,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--profile", default="fast", choices=["demo", "fast", "full"],
                     help="model capacity for train / experiments (experiments accept fast|full)")
     ap.add_argument("--source", default="auto", choices=["auto", "synthetic", "paysim", "ieee_cis"])
+    ap.add_argument("--device", default="auto", choices=["auto", "cuda", "mps", "cpu"],
+                    help="compute device for neural networks and XGBoost (auto, cuda, mps, cpu)")
     ap.add_argument("--n-windows", type=int, default=50)
     ap.add_argument("--n-steps", type=int, default=400, help="synthetic stream length")
     ap.add_argument("--drift-strength", type=float, default=0.5)
@@ -401,6 +403,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if not (args.mode or args.predict or args.ui):
         ap.print_help()
         return 2
+    if args.device != "auto":
+        os.environ["MG_ECFM_DEVICE"] = args.device
+    from src.utils.device import get_hardware_info
+    hw = get_hardware_info()
+    desc = hw.get("gpu_name") or f"CPU ({hw.get('cpu_threads', 1)} threads)"
+    print(f"[device] Compute device: {hw['device']} ({desc})", flush=True)
     exp_profile = "full" if args.profile == "full" else "fast"
     synth = {"drift_strength": args.drift_strength, "n_steps": args.n_steps, "seed": args.seed}
     try:

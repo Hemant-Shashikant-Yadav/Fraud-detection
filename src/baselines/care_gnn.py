@@ -136,7 +136,7 @@ class CARELayer(nn.Module):
                 p: Sequence[float], s_nbs: Optional[Sequence[torch.Tensor]] = None):
         """``h_c``: (B, d); ``h_nbs[r]``: (B, k, d); returns (h, logits_c, distances)."""
         logits_c, s_c = self.fraud_score(h_c)
-        combined = torch.zeros(h_c.shape[0], self.inter.out_features, dtype=h_c.dtype)
+        combined = torch.zeros(h_c.shape[0], self.inter.out_features, dtype=h_c.dtype, device=h_c.device)
         distances: List[float] = []
         for r, h_nb in enumerate(h_nbs):
             B, k, d = h_nb.shape
@@ -242,15 +242,15 @@ class CAREGNN(BaselineModel):
         for view in self.views_:
             index = KNNNeighborIndex(cfg.k_neighbors).fit(Z[:, view])
             self.indices.append(index)
-            self.tables.append(torch.as_tensor(index.train_neighbors(Z[:, view]), dtype=torch.long))
+            self.tables.append(torch.as_tensor(index.train_neighbors(Z[:, view]), dtype=torch.long, device=self.device))
         R = len(self.views_)
-        self.net = CARENetwork(X.shape[1], cfg, R)
+        self.net = CARENetwork(X.shape[1], cfg, R).to(self.device)
         self.thresholds = [[RelationThreshold(cfg.p_init, cfg.rl_step_tau, cfg.rl_window,
                                               cfg.rl_stop_abs_sum) for _ in range(R)]
                            for _ in range(cfg.n_layers)]
         opt = torch.optim.Adam(self.net.parameters(), lr=cfg.learning_rate,
                                weight_decay=cfg.lambda_2)
-        y_t = torch.as_tensor(y, dtype=torch.long)
+        y_t = torch.as_tensor(y, dtype=torch.long, device=self.device)
         rng = self._rng(21)
         losses: List[float] = []
         for _ in range(cfg.epochs):
@@ -260,7 +260,7 @@ class CAREGNN(BaselineModel):
             dist_cnt = np.zeros((cfg.n_layers, R))
             epoch_loss = 0.0
             for start in range(0, epoch_nodes.size, cfg.batch_size):
-                nodes = torch.as_tensor(epoch_nodes[start:start + cfg.batch_size], dtype=torch.long)
+                nodes = torch.as_tensor(epoch_nodes[start:start + cfg.batch_size], dtype=torch.long, device=self.device)
                 collect: List[Tuple[int, torch.Tensor, List[float]]] = []
                 h = self._embed(nodes, cfg.n_layers, collect)
                 loss_gnn = F.cross_entropy(self.net.classifier(h), y_t[nodes])
@@ -314,7 +314,7 @@ class CAREGNN(BaselineModel):
 
     @torch.no_grad()
     def _embed_new(self, Z: np.ndarray) -> torch.Tensor:
-        nbs = [torch.as_tensor(ix.query(Z[:, v]), dtype=torch.long)
+        nbs = [torch.as_tensor(ix.query(Z[:, v]), dtype=torch.long, device=self.device)
                for ix, v in zip(self.indices, self.views_)]
         h = self._to_tensor(Z)
         for level, layer in enumerate(self.net.layers):
@@ -331,9 +331,9 @@ class CAREGNN(BaselineModel):
         for s in range(0, Z.shape[0], self.config.inference_chunk):
             h = self._embed_new(Z[s:s + self.config.inference_chunk])
             out.append(torch.softmax(self.net.classifier(h), dim=1)[:, 1])
-        return torch.cat(out).double().numpy()
+        return torch.cat(out).double().cpu().numpy()
 
     def embed(self, X: np.ndarray) -> np.ndarray:
         """Final CARE-GNN node embeddings ``h^(L)`` of (new) transactions."""
         self._check_fitted()
-        return self._embed_new(self.scaler.transform(check_X(X, self.n_features_in_))).numpy()
+        return self._embed_new(self.scaler.transform(check_X(X, self.n_features_in_))).cpu().numpy()

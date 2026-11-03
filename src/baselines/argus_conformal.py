@@ -280,13 +280,13 @@ class ARGUSConformal(BaselineModel):
         self.scaler.fit(X[tr])
         Z = self.scaler.transform(X)
         w = torch.as_tensor(cost_sensitive_class_weights(
-            y[tr], cfg.fn_cost, cfg.fp_cost, cfg.balance_classes))
-        X_t, y_t = self._to_tensor(Z[tr]), torch.as_tensor(y[tr], dtype=torch.long)
+            y[tr], cfg.fn_cost, cfg.fp_cost, cfg.balance_classes), device=self.device)
+        X_t, y_t = self._to_tensor(Z[tr]), torch.as_tensor(y[tr], dtype=torch.long, device=self.device)
         use_val = stratified_tail_ok(y[va])
         X_v = self._to_tensor(Z[va]) if use_val else None
-        y_v = torch.as_tensor(y[va], dtype=torch.long) if use_val else None
+        y_v = torch.as_tensor(y[va], dtype=torch.long, device=self.device) if use_val else None
 
-        self.net = HybridTransSSM(X.shape[1], cfg)
+        self.net = HybridTransSSM(X.shape[1], cfg).to(self.device)
         opt = torch.optim.AdamW(self.net.parameters(), lr=cfg.learning_rate,
                                 weight_decay=cfg.weight_decay)
         stopper = EarlyStopper(cfg.patience)
@@ -338,7 +338,7 @@ class ARGUSConformal(BaselineModel):
         cfg = self.config
         T = cfg.mc_samples
         means, stds, ent, mi = [], [], [], []
-        with torch.random.fork_rng(devices=[]):
+        with torch.random.fork_rng(devices=[self.device] if self.device.type == "cuda" else []):
             torch.manual_seed(self.seed + 1009)
             self.net.enable_mc_dropout()
             chunk = max(1, cfg.inference_chunk // T)
@@ -353,8 +353,8 @@ class ARGUSConformal(BaselineModel):
                 ent.append(h_bar)
                 mi.append((h_bar - _binary_entropy(p).mean(0)).clamp(min=0.0))
             self.net.eval()
-        return {"mean": torch.cat(means).numpy(), "std": torch.cat(stds).numpy(),
-                "entropy": torch.cat(ent).numpy(), "mutual_information": torch.cat(mi).numpy()}
+        return {"mean": torch.cat(means).cpu().numpy(), "std": torch.cat(stds).cpu().numpy(),
+                "entropy": torch.cat(ent).cpu().numpy(), "mutual_information": torch.cat(mi).cpu().numpy()}
 
     def _predict_fraud_proba(self, X: np.ndarray) -> np.ndarray:
         return self._mc_dropout(self.scaler.transform(X))["mean"]

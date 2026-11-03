@@ -371,10 +371,10 @@ class EARNRXTJ(BaselineModel):
         W = self.rxt.out.weight.detach().clone()
         b = self.rxt.out.bias.detach().clone()
         shape_w = W.shape
-        theta0 = torch.cat([W.reshape(-1), b]).double().numpy()
+        theta0 = torch.cat([W.reshape(-1), b]).double().cpu().numpy()
 
         def objective(theta: np.ndarray) -> float:
-            t = torch.as_tensor(theta, dtype=torch.float32)
+            t = torch.as_tensor(theta, dtype=torch.float32, device=self.device)
             W_t = t[:W.numel()].view(shape_w)
             b_t = t[W.numel():]
             with torch.no_grad():
@@ -382,7 +382,7 @@ class EARNRXTJ(BaselineModel):
 
         best, report = jaya_minimize(objective, theta0, cfg.jaya_population,
                                      cfg.jaya_iterations, cfg.jaya_init_scale, self._rng(3))
-        t = torch.as_tensor(best, dtype=torch.float32)
+        t = torch.as_tensor(best, dtype=torch.float32, device=self.device)
         with torch.no_grad():
             self.rxt.out.weight.copy_(t[:W.numel()].view(shape_w))
             self.rxt.out.bias.copy_(t[W.numel():])
@@ -402,20 +402,20 @@ class EARNRXTJ(BaselineModel):
             Z_head, y_head = smote_oversample(Z_head, y_head, cfg.smote_ratio, cfg.smote_k,
                                               self._rng(0), cfg.smote_max_synthetic)
         w = torch.as_tensor(cost_sensitive_class_weights(
-            y_head, cfg.fn_cost, cfg.fp_cost, cfg.balance_classes))
+            y_head, cfg.fn_cost, cfg.fp_cost, cfg.balance_classes), device=self.device)
 
         X_t = self._to_tensor(Z_head)
-        y_t = torch.as_tensor(y_head, dtype=torch.long)
+        y_t = torch.as_tensor(y_head, dtype=torch.long, device=self.device)
         X_v = self._to_tensor(Z[tail]) if use_val else None
-        y_v = torch.as_tensor(y[tail], dtype=torch.long) if use_val else None
+        y_v = torch.as_tensor(y[tail], dtype=torch.long, device=self.device) if use_val else None
 
         d = X.shape[1]
-        self.earn = EARNExtractor(d, cfg)
+        self.earn = EARNExtractor(d, cfg).to(self.device)
         report = self._train_earn(X_t, y_t, w, X_v, y_v)
         with torch.no_grad():
             F_t = self.earn(X_t)["features"]
             F_v = self.earn(X_v)["features"] if use_val else None
-        self.rxt = ResNeXtGRU(self.earn.out_dim, cfg)
+        self.rxt = ResNeXtGRU(self.earn.out_dim, cfg).to(self.device)
         report.update(self._train_rxt(F_t, y_t, w, F_v, y_v))
         if use_val:
             report.update(self._jaya_finetune(F_v, y_v, w))
@@ -433,7 +433,7 @@ class EARNRXTJ(BaselineModel):
         self._check_fitted()
         Z = self._to_tensor(self.scaler.transform(check_X(X, self.n_features_in_)))
         self.earn.eval()
-        return self.earn(Z)["features"].numpy()
+        return self.earn(Z)["features"].cpu().numpy()
 
     @torch.no_grad()
     def _predict_fraud_proba(self, X: np.ndarray) -> np.ndarray:
@@ -444,4 +444,4 @@ class EARNRXTJ(BaselineModel):
         for start in range(0, Z.shape[0], 8192):
             f = self.earn(Z[start:start + 8192])["features"]
             out.append(torch.softmax(self.rxt(f), dim=1)[:, 1])
-        return torch.cat(out).double().numpy()
+        return torch.cat(out).double().cpu().numpy()

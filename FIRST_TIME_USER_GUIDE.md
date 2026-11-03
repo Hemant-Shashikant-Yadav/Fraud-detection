@@ -203,9 +203,16 @@ python main.py --mode quick-demo
 
 ## Step 7: Train the Production Fraud Mitigation Service
 
-Train the live MG-ECFM service on the real temporal training split of PaySim (steps 1–520):
+Train the live MG-ECFM service on the real temporal training split of PaySim (steps 1–520).
 
-### Fast Profile (Recommended for First Verification, ~2–3 minutes):
+### Recommended Verification Profile (~38 seconds, Memory-Safe):
+For first-time runs and systems with 8 GB or 16 GB RAM, train on the first 500,000 temporal transactions:
+```powershell
+python main.py --mode train --source paysim --profile fast --max-rows 500000
+```
+* **Why use `--max-rows 500000`**: PaySim has 6.36 million rows; streaming the entire dataset into memory can exceed 8 GB RAM. The 500,000-row slice preserves strict temporal ordering, exercises all relational graph construction and autoencoder updates, and generates a production-grade 315 MB service artifact in just ~38 seconds without risk of memory exhaustion.
+
+### Full-Scale Training (All 6.36 Million Rows, ~2–4 minutes):
 ```powershell
 python main.py --mode train --source paysim --profile fast
 ```
@@ -215,8 +222,24 @@ python main.py --mode train --source paysim --profile fast
 python main.py --mode train --source paysim --profile full
 ```
 
+### Hardware Acceleration (NVIDIA CUDA & Apple Silicon MPS):
+The pipeline automatically routes neural networks (GraphSAGE, Residual Autoencoder, Baselines BP1–BP4) and tabular models to your dedicated GPU:
+* **Auto-detect (Default)**: Automatically selects CUDA on NVIDIA systems, MPS on Apple Silicon Macs, or CPU.
+* **Explicit Selection**:
+  ```powershell
+  # Force NVIDIA CUDA (Windows / Linux)
+  python main.py --mode train --source paysim --profile fast --max-rows 500000 --device cuda
+
+  # Force Apple Silicon GPU (macOS M1/M2/M3/M4)
+  python main.py --mode train --source paysim --profile fast --max-rows 500000 --device mps
+
+  # Force CPU
+  python main.py --mode train --source paysim --profile fast --max-rows 500000 --device cpu
+  ```
+  *(You can also set the environment variable `MG_ECFM_DEVICE=cuda` or `MG_ECFM_DEVICE=mps`)*.
+
 ### What this produces:
-* Persists the live trained model into `models/mg_ecfm_service.pkl`.
+* Persists the live trained model into `models/mg_ecfm_service.pkl` (~315 MB).
 * Produces a companion summary report in `models/mg_ecfm_service.json`.
 * Measures and prints real-time authorization latency ($p50 \approx 3.0\text{ ms}$, $p95 < 5.0\text{ ms}$).
 
@@ -329,10 +352,17 @@ The loader streams `train_transaction.csv` and `train_identity.csv` in `Transact
   * `"source": "paysim"` $\rightarrow$ Certified from real PaySim data.
   * `"source": "synthetic_paysim(drift=0.5)"` $\rightarrow$ Synthetic generator.
 
-### Q5: Can I run this on a GPU?
-* **Solution**: Yes. If you have an NVIDIA GPU, install the matching PyTorch CUDA build:
-  ```powershell
-  pip install torch --index-url https://download.pytorch.org/whl/cu121
-  ```
-  The code automatically detects and uses CUDA when available.
+### Q5: Can I run this on a GPU or an Apple Silicon Mac?
+* **Solution**: Yes, cross-platform hardware acceleration is fully supported out of the box:
+  * **Windows / Linux (NVIDIA CUDA)**: Install the PyTorch CUDA build:
+    ```powershell
+    pip install torch --index-url https://download.pytorch.org/whl/cu121
+    ```
+    XGBoost and PyTorch neural networks will automatically use your dedicated NVIDIA GPU.
+  * **macOS (Apple Silicon M1/M2/M3/M4)**: Standard PyTorch from `pip install -r requirements.txt` automatically supports Metal Performance Shaders (`mps`). PyTorch tensors and modules are dispatched directly to the Apple Silicon GPU.
+  * **Explicit Device Flag**: You can verify or force the compute target using `--device`:
+    ```powershell
+    python main.py --mode train --source paysim --profile fast --max-rows 500000 --device auto
+    ```
+    When `main.py` launches, it prints a hardware diagnostics banner detailing the active device name and memory.
 

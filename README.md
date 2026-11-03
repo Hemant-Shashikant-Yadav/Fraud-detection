@@ -85,14 +85,24 @@ Fraud detection new/
 
 ## 3. Installation
 
-Python 3.11-3.13 (Windows, Linux or macOS). From the repository root:
+Python 3.10-3.13 (Windows, Linux or macOS). From the repository root:
 
 ```powershell
 cd "D:\Coding\Project\Fraud detection new"
 python -m venv venv
 .\venv\Scripts\Activate.ps1          # Linux/macOS: source venv/bin/activate
 pip install --upgrade pip
-pip install torch --index-url https://download.pytorch.org/whl/cpu   # CPU wheel (or your CUDA wheel)
+
+# PyTorch Installation:
+# For CPU only:
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+# For NVIDIA GPU (CUDA 12.1+ on Windows / Linux):
+# pip install torch --index-url https://download.pytorch.org/whl/cu121
+
+# For macOS Apple Silicon (M1/M2/M3/M4):
+# pip install torch   (Apple Silicon Metal MPS acceleration is supported out of the box)
+
 pip install -r requirements.txt
 ```
 
@@ -137,8 +147,20 @@ record is in `reports/quick_demo/quick_demo_manifest.json`. The demo uses reduce
 | `python main.py --predict FILE.csv [--output OUT.csv] [--model PKL]` | Score a transaction CSV | `FILE_scored.csv` |
 | `python main.py --ui [--port 8501] [--model PKL]` | Launch the Streamlit dashboard | browser at `http://localhost:8501` |
 
-Common options: `--seed 42`, `--n-steps 400` and `--drift-strength 0.5` (synthetic stream), `--max-rows`
-(real PaySim subset). `python main.py --help` lists everything.
+Common options:
+* `--max-rows N`: Limit streaming ingestion to first $N$ rows (e.g. `--max-rows 500000` for memory-safe fast training in ~38s).
+* `--device {auto,cuda,mps,cpu}`: Hardware target (auto-detects NVIDIA CUDA on Windows/Linux or Apple Silicon MPS on macOS).
+* `--seed 42`: Fix RNG seeds across NumPy, PyTorch, and Python.
+* `--profile {fast,full,demo}`: Select training epochs, estimators, and graph fanouts.
+
+```powershell
+# Recommended memory-safe training on real PaySim data (~38 seconds):
+python main.py --mode train --source paysim --profile fast --max-rows 500000
+
+# Explicitly select GPU compute target:
+python main.py --mode train --source paysim --profile fast --max-rows 500000 --device cuda   # NVIDIA
+python main.py --mode train --source paysim --profile fast --max-rows 500000 --device mps    # Apple Silicon
+```
 
 ---
 
@@ -180,6 +202,7 @@ python main.py --mode full-pipeline                 # fast profile, synthetic dr
 python main.py --mode full-pipeline --profile full  # published model capacity
 
 # 3. On the real PaySim log (place the CSV first, see Section 10)
+python main.py --mode train --source paysim --profile fast --max-rows 500000
 python main.py --mode full-pipeline --source paysim --max-rows 2000000
 ```
 
