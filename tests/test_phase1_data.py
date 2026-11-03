@@ -315,6 +315,58 @@ class TestStreamingExactness(unittest.TestCase):
         self.assertEqual(len(out) + len(tail), len(frame))
 
 
+class TestRestrictedCopy(unittest.TestCase):
+    """``restricted_copy`` must reproduce a full ``deepcopy`` bit for bit, without side effects."""
+
+    @staticmethod
+    def _state(eng: CausalFeatureEngineer):
+        return (dict(eng._registry._codes), eng._ledger.copy(), eng.rows_emitted, eng.last_finalized_step,
+                *[getattr(getattr(eng, r), a).copy() for r in ("_src", "_dst")
+                  for a in ("count", "mean", "m2", "last_step")],
+                *[(w, [(s, i.copy(), n.copy()) for s, i, n in getattr(eng, r).window_blocks[w]],
+                   getattr(eng, r).window_counts[w].copy())
+                  for r in ("_src", "_dst") for w in getattr(eng, r).windows])
+
+    def _assert_same_state(self, a, b) -> None:
+        self.assertEqual(len(a), len(b))
+        for x, y in zip(a, b):
+            if isinstance(x, np.ndarray):
+                np.testing.assert_array_equal(x, y)
+            elif isinstance(x, tuple):
+                self.assertEqual(x[0], y[0])
+                np.testing.assert_array_equal(x[2], y[2])
+                self.assertEqual(len(x[1]), len(y[1]))
+                for (s1, i1, n1), (s2, i2, n2) in zip(x[1], y[1]):
+                    self.assertEqual(s1, s2)
+                    np.testing.assert_array_equal(i1, i2)
+                    np.testing.assert_array_equal(n1, n2)
+            else:
+                self.assertEqual(x, y)
+
+    def test_matches_deepcopy_for_single_rows_and_batches(self) -> None:
+        import copy
+        history = _paysim_canonical(n_steps=30)
+        eng = CausalFeatureEngineer()
+        eng.transform(history)
+        before = self._state(eng)
+        rng = np.random.default_rng(SEED)
+        last = int(history["step"].max())
+        future = _paysim_canonical(seed=SEED + 1, n_steps=6)
+        future["step"] = future["step"] + last
+        future["tx_id"] = future["tx_id"] + 10_000
+        # mix of known accounts, unseen accounts and a missing destination
+        future.loc[future.index[::7], "src"] = "C_UNSEEN_" + future.index[::7].astype(str)
+        future.loc[future.index[3], "dst"] = ""   # MISSING_ENTITY
+        cases = [future.iloc[[int(i)]].assign(step=last + 1) for i in rng.integers(0, len(future), 25)]
+        cases.append(future)                                 # multi-step batch
+        for case in cases:
+            keys = pd.unique(pd.concat([case["src"], case["dst"]]).astype(str))
+            ref = copy.deepcopy(eng).transform(case)
+            got = eng.restricted_copy(keys).transform(case)
+            pd.testing.assert_frame_equal(ref, got, check_exact=True)
+        self._assert_same_state(before, self._state(eng))
+
+
 class TestStreamLoaders(unittest.TestCase):
     def test_paysim_stream(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -356,6 +356,47 @@ class CausalFeatureEngineer:
     def n_entities(self) -> int:
         return len(self._registry)
 
+    def restricted_copy(self, keys: Iterable[object]) -> "CausalFeatureEngineer":
+        """Independent engineer that holds only the state of the entities ``keys``.
+
+        Features of a row depend only on the state of its own source /
+        destination entities (plus the step), so for any rows whose entities
+        are all in ``keys`` the copy emits bit-identical features to the full
+        engineer - at a cost proportional to ``len(keys)`` instead of a
+        ``deepcopy`` of every entity ever seen. ``self`` is never modified.
+        """
+        if self._pending is not None and not self._pending.empty:
+            raise RuntimeError("restricted_copy requires a flushed engineer")
+        uniq = np.unique(hash_entity_keys(np.asarray([str(k) for k in keys], dtype=object)))
+        codes = self._registry._codes
+        found = [(h, codes[h]) for h in uniq.tolist() if h in codes]
+        old_ids = np.asarray([i for _, i in found], dtype=np.int64)
+        new = CausalFeatureEngineer(self.config)
+        new._registry._codes = {h: k for k, (h, _) in enumerate(found)}
+        remap = {int(i): k for k, i in enumerate(old_ids.tolist())}
+        for name in ("_src", "_dst"):
+            old, dst = getattr(self, name), getattr(new, name)
+            n = old_ids.size
+            if n and int(old_ids.max()) >= old.capacity:   # every registered id has a state row
+                raise RuntimeError("engineer state is inconsistent with its registry")
+            dst.ensure_capacity(n)
+            dst.count[:n] = old.count[old_ids]
+            dst.mean[:n] = old.mean[old_ids]
+            dst.m2[:n] = old.m2[old_ids]
+            dst.last_step[:n] = old.last_step[old_ids]
+            for w in old.windows:
+                dst.window_counts[w][:n] = old.window_counts[w][old_ids]
+                for step, ids, n_b in old.window_blocks[w]:
+                    keep = np.isin(ids, old_ids)
+                    dst.window_blocks[w].append(
+                        (step, np.asarray([remap[int(i)] for i in ids[keep]], dtype=ids.dtype), n_b[keep]))
+        new._ledger = np.zeros(max(old_ids.size, 1), dtype=np.float64)
+        in_ledger = old_ids < self._ledger.shape[0]
+        new._ledger[: old_ids.size][in_ledger] = self._ledger[old_ids[in_ledger]]
+        new._last_finalized_step = self._last_finalized_step
+        new.rows_emitted = self.rows_emitted
+        return new
+
     @property
     def last_finalized_step(self) -> Optional[int]:
         return self._last_finalized_step

@@ -295,17 +295,12 @@ def build_real_stream(dataset: str, project_config: Mapping[str, Any],
     """Stream a configured raw dataset through the Phase-1 loader + causal engineer."""
     loader = build_loader(dataset, project_config, repo_root=ROOT, max_rows=max_rows)
     engineer = CausalFeatureEngineer(CausalFeatureConfig.from_project_config(project_config, dataset))
-    canon_parts: List[pd.DataFrame] = []
-
-    def chunks() -> Iterable[pd.DataFrame]:
-        for chunk in loader.iter_chunks():
-            canon_parts.append(chunk[[c for c in ("tx_id", "step", "event_time", "src", "dst",
-                                                  "amount", "tx_type", "label")
-                                      if c in chunk.columns]].copy())
-            yield chunk
-
-    frame = pd.concat(list(engineer.transform_stream(chunks())), ignore_index=True)
-    canon = pd.concat(canon_parts, ignore_index=True)
+    frame = pd.concat(list(engineer.transform_stream(loader.iter_chunks())), ignore_index=True)
+    # The engineer carries the canonical columns through unchanged and in input
+    # order, so the canonical stream is a column selection of ``frame`` (shared
+    # buffers under copy-on-write) instead of a second copy of every chunk.
+    canon = frame[[c for c in ("tx_id", "step", "event_time", "src", "dst", "amount", "tx_type", "label")
+                   if c in frame.columns]]
     return frame, list(engineer.feature_names), canon
 
 
@@ -384,11 +379,19 @@ def chronological_splits(frame: pd.DataFrame, feature_names: Sequence[str], n_wi
     if np.any(np.diff(steps) < 0):
         raise ValueError("feature frame must be sorted by step")
     parts: Dict[str, pd.DataFrame] = {}
+
+    def step_range(lo: int, hi_exclusive: int) -> pd.DataFrame:
+        # ``steps`` is sorted, so a step range is a contiguous row range: an iloc
+        # slice shares the parent's buffers (copy-on-write) instead of copying
+        # the frame like a boolean mask does. Same rows, same order.
+        a = int(np.searchsorted(steps, lo, side="left"))
+        b = int(np.searchsorted(steps, hi_exclusive, side="left"))
+        return frame.iloc[a:b].reset_index(drop=True)
+
     if split_steps:
         for name in ("train", "calibration", "operating", "test"):
             spec = split_steps[name]
-            sel = (steps >= int(spec["start_step"])) & (steps <= int(spec["end_step"]))
-            parts[name] = frame.loc[sel].reset_index(drop=True)
+            parts[name] = step_range(int(spec["start_step"]), int(spec["end_step"]) + 1)
     if not parts or any(p.empty for p in parts.values()):
         uniq = np.unique(steps)
         f_tr, f_cal, f_op = fractions
@@ -402,7 +405,7 @@ def chronological_splits(frame: pd.DataFrame, feature_names: Sequence[str], n_wi
             raise ValueError("stream has too few distinct steps for a four-way split")
         edges = [uniq[0], uniq[c1], uniq[c2], uniq[c3], uniq[-1] + 1]
         for name, lo, hi in zip(("train", "calibration", "operating", "test"), edges[:-1], edges[1:]):
-            parts[name] = frame.loc[(steps >= lo) & (steps < hi)].reset_index(drop=True)
+            parts[name] = step_range(int(lo), int(hi))
     for name in ("train", "calibration"):
         y = parts[name]["label"].to_numpy()
         if y.min() == y.max():
@@ -791,9 +794,17 @@ class BaselineSystem:
     def fit(self, splits: StreamSplits) -> "BaselineSystem":
         set_global_seed(self.seed)
         self.feature_names = list(splits.feature_names)
-        past = pd.concat([splits.train, splits.calibration], ignore_index=True)
+        # train + calibration feature matrix without concatenating the full frames
+        # (which would also copy the string / carry columns).
+        n_tr, n_cal = len(splits.train), len(splits.calibration)
+        X_past = np.empty((n_tr + n_cal, len(self.feature_names)), dtype=np.float64)
+        X_past[:n_tr] = self._X(splits.train)
+        X_past[n_tr:] = self._X(splits.calibration)
+        y_past = np.concatenate([splits.train["label"].to_numpy(),
+                                 splits.calibration["label"].to_numpy()]).astype(int)
         t0 = time.perf_counter()
-        self.model.fit(self._X(past), past["label"].to_numpy().astype(int))
+        self.model.fit(X_past, y_past)
+        del X_past
         p_op = self.model.predict_proba(self._X(splits.operating))[:, 1]
         self.threshold_ = select_operating_threshold(splits.operating["label"].to_numpy(), p_op)
         self.is_fitted_ = True

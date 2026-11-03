@@ -232,20 +232,33 @@ class StackedFusionClassifier:
         return names
 
     def assemble(self, x_clean: np.ndarray, h_src: Optional[np.ndarray], h_dst: Optional[np.ndarray],
-                 r_ae: Optional[np.ndarray], kb: Optional[np.ndarray]) -> np.ndarray:
-        """``z_t = [x_clean || h_u || h_v || r_AE || phi_KB]`` (row-wise)."""
-        x = np.asarray(x_clean, dtype=np.float64)
+                 r_ae: Optional[np.ndarray], kb: Optional[np.ndarray],
+                 dtype: np.dtype = np.float64) -> np.ndarray:
+        """``z_t = [x_clean || h_u || h_v || r_AE || phi_KB]`` (row-wise).
+
+        The blocks are written into one preallocated ``dtype`` matrix (no
+        intermediate float64 copies). The batch path uses float32 because the
+        XGBoost engine casts its input to float32 anyway, so the scores are
+        bit-identical while the fusion matrix takes half the memory.
+        """
+        x = np.asarray(x_clean)
         if x.ndim == 1:
             x = x[None, :]
+        n = x.shape[0]
         parts = [x]
         if self.use_relational:
-            parts += [np.asarray(h_src, dtype=np.float64).reshape(x.shape[0], -1),
-                      np.asarray(h_dst, dtype=np.float64).reshape(x.shape[0], -1)]
+            parts += [np.asarray(h_src).reshape(n, -1), np.asarray(h_dst).reshape(n, -1)]
         if self.use_ae:
-            parts.append(np.asarray(r_ae, dtype=np.float64).reshape(x.shape[0], 1))
+            parts.append(np.asarray(r_ae).reshape(n, 1))
         if self.use_kb:
-            parts.append(np.asarray(kb, dtype=np.float64).reshape(x.shape[0], -1))
-        return np.concatenate(parts, axis=1)
+            parts.append(np.asarray(kb).reshape(n, -1))
+        out = np.empty((n, sum(p.shape[1] for p in parts)), dtype=dtype)
+        col = 0
+        for p in parts:
+            # float64 first, then dtype: same rounding as the former float64 concatenate + cast
+            out[:, col:col + p.shape[1]] = p.astype(np.float64, copy=False)
+            col += p.shape[1]
+        return out
 
     # ----------------------------------------------------------- helpers
     def _x(self, frame: pd.DataFrame) -> np.ndarray:
@@ -274,20 +287,28 @@ class StackedFusionClassifier:
                 raise ValueError(f"{name} split overlaps / precedes the {prev_name} split")
             prev_max, prev_name = steps.max(), name
 
-    def _components(self, frame: pd.DataFrame, record_labels: bool = False) -> np.ndarray:
-        """Compute ``z_t`` for a chronological frame (advances graph memory)."""
-        x = self._x(frame)
+    def _components(self, frame: pd.DataFrame, record_labels: bool = False,
+                    graph_args: Optional[tuple] = None) -> np.ndarray:
+        """Compute ``z_t`` (float32) for a chronological frame (advances graph memory).
+
+        ``graph_args`` may pass a precomputed :meth:`_graph_args` tuple of the
+        same frame so that its feature matrix and key lists are not rebuilt.
+        """
+        if graph_args is None:
+            graph_args = self._graph_args(frame) if self.use_relational else (self._x(frame),)
+        x = graph_args[0]
         h_src = h_dst = r = kb = None
         if self.use_relational:
             labels = frame[self.columns.label].to_numpy() if (
                 record_labels and self.columns.label in frame.columns) else None
-            out = self.graph.transform_stream(*self._graph_args(frame), labels=labels)
+            out = self.graph.transform_stream(*graph_args, labels=labels)
             h_src, h_dst = out["h_src"], out["h_dst"]
+            del out
         if self.use_ae:
             r = self.autoencoder.residual(x)
         if self.use_kb:
             kb = self.kb_encoder.transform_frame(frame)
-        return self.assemble(x, h_src, h_dst, r, kb)
+        return self.assemble(x, h_src, h_dst, r, kb, dtype=np.float32)
 
     # --------------------------------------------------------------- fit
     def fit(self, train: pd.DataFrame, calibration: pd.DataFrame,
@@ -304,7 +325,10 @@ class StackedFusionClassifier:
             self.kb_encoder.set_rules(rules, rule_weights)
         y_train = train[c.label].to_numpy().astype(int)
         y_cal = calibration[c.label].to_numpy().astype(int)
-        x_train = self._x(train)
+        # Build the training feature matrix (and the graph key lists) once and
+        # reuse them for the DAE, the GraphSAGE fit and the fusion matrix.
+        train_args = self._graph_args(train) if self.use_relational else (self._x(train),)
+        x_train = train_args[0]
         report: Dict[str, object] = {}
 
         if self.use_ae:
@@ -312,15 +336,17 @@ class StackedFusionClassifier:
             report["ae_best_epoch"] = self.autoencoder.best_epoch
 
         if self.use_relational:
-            feats, amts, steps, src, dst = self._graph_args(train)
+            feats, amts, steps, src, dst = train_args
             self.graph.reset_state()
             self.graph.fit_normalizer(feats, amts)
             hist = self.graph.fit_stream(feats, amts, steps, src, dst, y_train,
                                          epochs=graph_epochs, verbose=verbose)
             report["graph_history"] = hist
             self.graph.reset_state()
+            del feats, amts, steps, src, dst
 
-        z_train = self._components(train, record_labels=True)
+        z_train = self._components(train, record_labels=True, graph_args=train_args)
+        del train_args, x_train
         z_val = y_val = None
         if validation is not None and not validation.empty:
             z_val = self._components(validation)

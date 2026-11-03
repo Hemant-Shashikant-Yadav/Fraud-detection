@@ -64,6 +64,7 @@ ACTION_LABELS: Dict[int, str] = {int(Action.APPROVE): "Approve", int(Action.STEP
 PAYSIM_RENAME: Dict[str, str] = {"nameOrig": "src", "nameDest": "dst", "type": "tx_type", "isFraud": "label"}
 LABEL_ALIASES: Tuple[str, ...] = ("label", "isFraud", "is_fraud", "y")
 SERVICE_FORMAT_VERSION = 1
+REPLAY_CHUNK_ROWS = 250_000   # causal-engineer replay chunk (memory bound, result-neutral)
 
 
 def utc_clock() -> str:
@@ -151,22 +152,32 @@ class MGECFMService:
         self.build_report: Dict[str, Any] = dict(build_report or {})
         # Causal feature state at the end of the history (Phase-1 engineer replay).
         self.engineer = CausalFeatureEngineer(self._feature_config())
-        replay = self.engineer.transform(self.canonical)
+        # Only the engineer's end state is needed: replay in chunks and drop each
+        # output instead of materialising the whole feature frame (streaming is
+        # exact, see CausalFeatureEngineer guarantee 4).
+        chunk = REPLAY_CHUNK_ROWS
+        for _ in self.engineer.transform_stream(
+                self.canonical.iloc[i:i + chunk] for i in range(0, len(self.canonical), chunk)):
+            pass
         if list(self.engineer.feature_names) != self.feature_names:
             raise RuntimeError("feature schema of the replayed engineer differs from the fitted model")
         self.last_step = int(self.canonical["step"].max())
         # Reference distributions for explanation (training split only).
         train = splits.train
         x_train = train[self.feature_names].to_numpy(dtype=np.float64)
-        slog = np.sign(x_train) * np.log1p(np.abs(x_train))
+        # sign(x) * log1p(|x|) in one buffer (no sign / abs / log1p temporaries)
+        slog = np.abs(x_train)
+        np.log1p(slog, out=slog)
+        np.negative(slog, out=slog, where=x_train < 0)
         self._feat_mu = slog.mean(axis=0)
-        self._feat_sd = np.where(slog.std(axis=0) > 1e-9, slog.std(axis=0), 1.0)
+        sd = slog.std(axis=0)
+        del slog
+        self._feat_sd = np.where(sd > 1e-9, sd, 1.0)
         clf = self.system.classifier
         self._ae_ref = (np.sort(clf.autoencoder.residual(x_train)) if clf.use_ae else np.zeros(0))
         self._fraud_accounts = self._labelled_accounts()
         self._tracker = None
         self._simulator = None
-        del replay
 
     # ------------------------------------------------------------ building
     def _feature_config(self) -> CausalFeatureConfig:
@@ -289,7 +300,8 @@ class MGECFMService:
         if step <= self.last_step:
             raise ValueError(f"step must be after the last finalised step {self.last_step}")
         t0 = time.perf_counter()
-        eng = copy.deepcopy(self.engineer)
+        # State of just these two entities (exact; a deepcopy of every account is O(n_entities)).
+        eng = self.engineer.restricted_copy([str(src), str(dst)])
         row = pd.DataFrame([{"src": str(src), "dst": str(dst), "amount": float(amount),
                              "tx_type": str(tx_type).upper()}])
         canon = self._canonical_rows(row, step)
@@ -475,7 +487,8 @@ class MGECFMService:
         canon["event_time"] = canon["step"].astype(np.float64) * 3600.0
         canon["tx_id"] = np.arange(n, dtype=np.int64) + 10_000_000
         t0 = time.perf_counter()
-        eng = copy.deepcopy(self.engineer)
+        # Only the batch's own entities are needed (exact, see restricted_copy).
+        eng = self.engineer.restricted_copy(pd.unique(pd.concat([canon["src"], canon["dst"]]).astype(str)))
         feats = eng.transform(canon)
         clf = copy.deepcopy(self.system.classifier)
         p = np.clip(clf.predict_proba(feats), 0.0, 1.0)
