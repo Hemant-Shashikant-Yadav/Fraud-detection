@@ -21,3 +21,7 @@ reports/figures/**
 reports/tables/**
 reports/manifests/**
 !reports/**/.gitkeep
+
+# Large result files (>100 MB, GitHub limit)
+reports/drift_evaluation_predictions.csv
+.DS_Store
