@@ -26,7 +26,7 @@ Matplotlib figures:
 * `kb_plot` — rule status and e-process wealth.
 
 ### 1.3 Page layout and sidebar (lines 261–299)
-Sidebar "Live service": data source, profile, last step, active rules, current CS-ACRC thresholds, latency benchmark button. Then `st.tabs` with five tabs:
+Sidebar "Live service": model file, stream and profile, history size and accounts, last step, current CS-ACRC thresholds, the binary threshold τ, active KB rules, test-period PR-AUC/F1/Brier of the build, and a *Profile authorisation latency (200 tx)* button that shows p95 against a **5 ms** budget (p50/p99/max and featurisation time below it). Then `st.tabs` with five tabs:
 
 ### 1.4 ⚡ Live Scoring (lines ~300–368)
 Inputs for sender, receiver, amount and type (with example presets: mule-network fraud, routine payment, large transfer to a never-seen account). Calls `service.score_transaction(...)` and shows probability, risk score, **action** with the route reason (threshold, amount escalation, KB floor, uncertain-block→hold), expected loss per action, fired rules, per-component latency (graph / AE / KB / tabular / routing), and the explanation (attribution plot, feature deviations vs training, autoencoder-residual percentile).

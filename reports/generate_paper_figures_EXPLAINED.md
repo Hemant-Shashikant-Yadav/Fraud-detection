@@ -17,7 +17,7 @@ The data behind the computed figures (2 and 4) is also saved as CSV in `reports/
 * **Fig. 1 `figure_pr_auc` (148–198):** one line per model, markers for per-window values and a thicker rolling mean; shaded drift region.
 * **Fig. 2 (200–314):** `_trajectory(process, xs)` runs a betting e-process over a fixed outcome sequence and returns log-wealth and stopping time; `martingale_trajectories(...)` generates trajectories for good and harmful rules using the project's gate configuration and the contaminated feed; `figure_martingale(...)` plots wealth on a log axis with the `1/α` line.
 * **Fig. 3 `figure_crc_thresholds` (316–368):** λ trajectories from the per-window results plus fraud and intervention rates.
-* **Fig. 4 (370–488):** `evaluated_canonical_stream(manifest)` rebuilds the canonical stream that was evaluated (uses the manifest's source, so on PaySim runs it must reload the raw file); `recovery_curves(...)` runs TD-TPF at several detection delays and κ values; `figure_recovery` plots the curves and the settlement-window boundary.
+* **Fig. 4 (370–488):** `evaluated_canonical_stream(manifest)` rebuilds the canonical stream that was evaluated (synthetic streams are regenerated from the manifest; for a PaySim run the raw file is re-read through the loader with the manifest's `max_rows`, default 2 000 000, so the raw CSV must be present); `recovery_curves(...)` runs TD-TPF at several detection delays and κ values; `figure_recovery` plots the curves and the settlement-window boundary.
 * **Driver (490–547):** `generate_figures(reports_dir, out_dir)` calls the four figure functions (skipping a figure when its input is missing) and returns the file map; `main` is the CLI.
 
 ## Notes

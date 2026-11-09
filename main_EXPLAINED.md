@@ -40,8 +40,8 @@ Runs the whole pipeline on a small **synthetic** stream with timed stages: causa
 `launch_ui(port, model_path)`: checks that Streamlit is installed, passes the model path through `MG_ECFM_SERVICE`, and runs `streamlit run app/app.py`.
 
 ### 1.8 CLI (lines 372–460)
-* `MODES` and `build_parser()`: arguments `--mode`, `--predict`, `--ui`, `--output`, `--model`, `--profile (demo|fast|full)`, `--source (auto|synthetic|paysim|ieee_cis)`, `--n-windows`, `--n-steps`, `--drift-strength`, `--max-rows`, `--reports-dir`, `--port`, `--seed`.
-* `main(argv)`: dispatches each mode. `--mode train` resolves the data source with **`resolve_source`** (so `auto` raises if PaySim is missing instead of silently using synthetic data); all other experiment modes get the same guard through `prepare_splits`. `KeyboardInterrupt` → exit 130; any other exception prints a traceback and returns 1 so batch runners/CI see failures.
+* `MODES` and `build_parser()`: arguments `--mode`, `--predict`, `--ui`, `--output`, `--model`, `--profile (demo|fast|full)`, `--source (auto|synthetic|paysim|ieee_cis)`, `--device (auto|cuda|mps|cpu)`, `--n-windows`, `--n-steps`, `--drift-strength`, `--max-rows`, `--reports-dir`, `--port`, `--seed`.
+* `main(argv)`: if `--device` is not `auto` it sets `MG_ECFM_DEVICE`, then prints the detected compute device (`[device] Compute device: …`) before dispatching each mode. `--mode train` resolves the data source with **`resolve_source`** (so `auto` raises if PaySim is missing instead of silently using synthetic data); all other experiment modes get the same guard through `prepare_splits`. `KeyboardInterrupt` → exit 130; any other exception prints a traceback and returns 1 so batch runners/CI see failures.
 
 ## 2. Things to remember
 * `--source auto` ⇒ PaySim, or an error. Use `--source synthetic` only for smoke tests.

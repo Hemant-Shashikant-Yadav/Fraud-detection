@@ -48,4 +48,4 @@ Small CPU-friendly baseline configs; `load_json`, `load_configs` (hyperparameter
 
 ## 3. Things to remember
 * This file defines the **evaluation fairness**: same splits, same windows, thresholds chosen on operating data only.
-* The PaySim 2M run took ~85 minutes (`runtime_seconds ≈ 5137`), dominated by baseline training.
+* The PaySim-2M drift evaluation recorded `runtime_seconds ≈ 5137` (~86 min); the deck records ~8 774 s for the whole `full-pipeline` run on an Apple-Silicon Mac (CPU, ~8 GB peak RSS). Time is dominated by baseline training (BP3 ≈ 1 426 s, BP4 ≈ 1 005 s, MG-ECFM ≈ 73 s).

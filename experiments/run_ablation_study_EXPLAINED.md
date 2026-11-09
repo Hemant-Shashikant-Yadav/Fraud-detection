@@ -29,11 +29,11 @@ B3-static, B3-adaptive, B4 and B5 **branch from one fitted pipeline** (`clone_sy
 `recovery_accounting(predictions, canonical, …)`: for frauds not intercepted before settlement, runs the TD-TPF tracer and recovery simulator at the detection delay and returns recovered value, prevented-loss ratio and net loss per arm.
 
 ### 2.3 Knowledge-base diagnostics (lines 364–384)
-`kb_diagnostics`: active/harmful rule counts and precision of active rules on the test data (relative to `p0`).
+`kb_diagnostics`: active rules at the end, rules ever admitted, the share of admitted rules whose test-period precision is ≤ `p0` ("admitted bad rate", rules with ≥ 5 firings only) and the mean precision of active rules.
 
 ### 2.4 Runner (lines 390–600)
 * `pooled_metrics`: pooled PR-AUC, F1, F2, Brier, EML, net monetary loss, prevented-loss ratio.
-* `triage_accuracy`: accuracy of the analyst-assist triage.
+* `triage_accuracy`: on the hold queue, accuracy of score-only triage (`p ≥ 0.5`) versus evidence-assisted triage (average of `p` and the neighbour fraud share), plus queue size.
 * `ArmRun` (container), `build_arm_system` (constructs the arm's `MGECFMSystem` configuration).
 * `run_ablation_study(...)`: prepares splits (using the same `prepare_splits`, so the **no-silent-synthetic guard** applies), fits the needed pipelines, evaluates each arm window by window, computes accounting and diagnostics, and writes the CSVs.
 * `main`: CLI (`--source`, `--profile`, `--n-windows`, `--poison-rate`, `--label-delay-windows`, `--max-rows`, ...).

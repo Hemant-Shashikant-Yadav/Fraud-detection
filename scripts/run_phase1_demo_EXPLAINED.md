@@ -12,7 +12,7 @@ It demonstrates:
 ## Section-by-section
 * **Setup (1–40):** sets a temp `MPLCONFIGDIR`, puts the project root on `sys.path`, imports `CausalFeatureConfig`, `CausalFeatureEngineer` and the synthetic-data/loader helpers from `src/data/`.
 * **`print_banner` (42–47):** title banner (project and candidate information).
-* **`run_demo` (49–211):** generates a small synthetic PaySim-style stream (including leakage columns), writes it to a temp CSV, then runs the five demonstrations above in order, printing results (columns stripped, rows streamed, feature count, invariance check pass/fail, ms per transaction and transactions per second). Returns a status used by the batch file for the `[SUCCESS]`/`[ERROR]` message.
+* **`run_demo` (49–211):** runs five printed stages: (1) ingestion and leakage stripping — if the **real PaySim CSV is present** it streams its first 10 000 rows through `PaySimLoader`, otherwise it falls back to a small schema-faithful synthetic frame; (2) canonical harmonisation and chronological-order check; (3) causal rolling features and timing; then the permutation-invariance and latency/throughput checks. It prints the detected leakage columns, stripped columns, feature count, ms per batch, etc.
 
 ## Notes
-* It uses **synthetic** data by design (to be self-contained); it is a demonstration, not an experiment.
+* It works with or without the real dataset (it detects the file), and is a demonstration, not an experiment. The banner is hard-coded text from the first presentation (it prints a fixed PaySim row count and fraud rate, not values measured from the data).
