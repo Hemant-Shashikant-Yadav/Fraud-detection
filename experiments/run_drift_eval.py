@@ -290,10 +290,12 @@ def build_synthetic_stream(n_steps: int = 400, tx_per_step: Tuple[int, int] = (5
 
 
 def build_real_stream(dataset: str, project_config: Mapping[str, Any],
-                      max_rows: Optional[int] = None
+                      max_rows: Optional[int] = None, sample_rows: Optional[int] = None,
+                      sample_seed: int = SEED
                       ) -> Tuple[pd.DataFrame, List[str], pd.DataFrame]:
     """Stream a configured raw dataset through the Phase-1 loader + causal engineer."""
-    loader = build_loader(dataset, project_config, repo_root=ROOT, max_rows=max_rows)
+    loader = build_loader(dataset, project_config, repo_root=ROOT, max_rows=max_rows,
+                          sample_rows=sample_rows, sample_seed=sample_seed)
     engineer = CausalFeatureEngineer(CausalFeatureConfig.from_project_config(project_config, dataset))
     frame = pd.concat(list(engineer.transform_stream(loader.iter_chunks())), ignore_index=True)
     # The engineer carries the canonical columns through unchanged and in input
@@ -370,10 +372,13 @@ def chronological_splits(frame: pd.DataFrame, feature_names: Sequence[str], n_wi
                          metadata: Optional[Dict[str, Any]] = None) -> StreamSplits:
     """Split a step-sorted causal frame into train / calibration / operating / test.
 
-    ``fractions`` are the shares of *distinct steps* given to train,
-    calibration and operating; the remainder is the test period. When
-    ``split_steps`` (``project_config['temporal_splits'][dataset]``) is given and
-    every split is non-empty in ``frame`` it is used instead.
+    ``fractions`` are the shares of *rows* given to train, calibration and
+    operating (cut at step boundaries); the remainder is the test period. When
+    ``split_steps`` (``project_config['temporal_splits'][dataset]``) is given,
+    every split is non-empty and calibration / operating hold both classes, it
+    is used instead. The operating split selects the decision threshold, so a
+    single-class operating split (e.g. the fraud-only PaySim steps 100-117)
+    would silently fall back to tau = 0.5.
     """
     steps = frame["step"].to_numpy()
     if np.any(np.diff(steps) < 0):
@@ -392,21 +397,28 @@ def chronological_splits(frame: pd.DataFrame, feature_names: Sequence[str], n_wi
         for name in ("train", "calibration", "operating", "test"):
             spec = split_steps[name]
             parts[name] = step_range(int(spec["start_step"]), int(spec["end_step"]) + 1)
-    if not parts or any(p.empty for p in parts.values()):
-        uniq = np.unique(steps)
+    def two_class(part: pd.DataFrame) -> bool:
+        y = part["label"].to_numpy()
+        return y.size > 0 and y.min() != y.max()
+
+    if (not parts or any(p.empty for p in parts.values())
+            or not all(two_class(parts[n]) for n in ("calibration", "operating"))):
+        parts = {}
+        uniq, counts = np.unique(steps, return_counts=True)
         f_tr, f_cal, f_op = fractions
         if not (f_tr > 0 and f_cal > 0 and f_op > 0 and f_tr + f_cal + f_op < 1.0):
             raise ValueError("fractions must be positive and leave a non-empty test period")
         n_u = uniq.size
-        c1 = int(round(f_tr * n_u))
-        c2 = c1 + max(1, int(round(f_cal * n_u)))
-        c3 = c2 + max(1, int(round(f_op * n_u)))
+        cum = np.cumsum(counts) / counts.sum()
+        c1 = max(1, int(np.searchsorted(cum, f_tr)))
+        c2 = max(c1 + 1, int(np.searchsorted(cum, f_tr + f_cal)))
+        c3 = max(c2 + 1, int(np.searchsorted(cum, f_tr + f_cal + f_op)))
         if not (0 < c1 < c2 < c3 < n_u):
             raise ValueError("stream has too few distinct steps for a four-way split")
         edges = [uniq[0], uniq[c1], uniq[c2], uniq[c3], uniq[-1] + 1]
         for name, lo, hi in zip(("train", "calibration", "operating", "test"), edges[:-1], edges[1:]):
             parts[name] = step_range(int(lo), int(hi))
-    for name in ("train", "calibration"):
+    for name in ("train", "calibration", "operating"):
         y = parts[name]["label"].to_numpy()
         if y.min() == y.max():
             raise ValueError(f"{name} split must contain both classes")
@@ -416,7 +428,8 @@ def chronological_splits(frame: pd.DataFrame, feature_names: Sequence[str], n_wi
 
 
 def prepare_splits(source: str = "auto", n_windows: int = 50, project_config: Optional[Mapping] = None,
-                   max_rows: Optional[int] = None, synthetic_kwargs: Optional[Mapping[str, Any]] = None
+                   max_rows: Optional[int] = None, synthetic_kwargs: Optional[Mapping[str, Any]] = None,
+                   sample_rows: Optional[int] = None, sample_seed: int = SEED
                    ) -> StreamSplits:
     """Resolve the data source and return chronological splits with test windows."""
     if project_config is None:
@@ -430,11 +443,13 @@ def prepare_splits(source: str = "auto", n_windows: int = 50, project_config: Op
                                     metadata={"synthetic_kwargs": {k: (list(v) if isinstance(v, tuple) else v)
                                                                    for k, v in kwargs.items()}})
     if source in ("paysim", "ieee_cis"):
-        frame, names, canon = build_real_stream(source, project_config, max_rows=max_rows)
+        frame, names, canon = build_real_stream(source, project_config, max_rows=max_rows,
+                                                sample_rows=sample_rows, sample_seed=sample_seed)
         split_steps = project_config.get("temporal_splits", {}).get(source)
         return chronological_splits(frame, names, n_windows, split_steps=split_steps,
                                     source=source, canonical=canon,
-                                    metadata={"max_rows": max_rows})
+                                    metadata={"max_rows": max_rows, "sample_rows": sample_rows,
+                                              "sample_seed": sample_seed if sample_rows else None})
     raise ValueError("source must be 'auto', 'synthetic', 'paysim' or 'ieee_cis'")
 
 
@@ -979,7 +994,9 @@ def run_drift_evaluation(source: str = "auto", profile: str = "fast", n_windows:
                          results_path: Optional[Path] = DEFAULT_RESULTS_PATH,
                          predictions_path: Optional[Path] = DEFAULT_PREDICTIONS_PATH,
                          manifest_path: Optional[Path] = DEFAULT_MANIFEST_PATH,
-                         seed: int = SEED, verbose: bool = True
+                         seed: int = SEED, verbose: bool = True,
+                         sample_rows: Optional[int] = None,
+                         service_path: Optional[Path] = None
                          ) -> Tuple[pd.DataFrame, pd.DataFrame, Dict[str, Any]]:
     """End-to-end Phase-7 drift evaluation; writes the CSV / JSON outputs."""
     set_global_seed(seed)
@@ -993,7 +1010,8 @@ def run_drift_evaluation(source: str = "auto", profile: str = "fast", n_windows:
     if unknown:
         raise ValueError(f"unknown models {unknown}; choose from {MODEL_ORDER}")
     t0 = time.perf_counter()
-    splits = prepare_splits(source, n_windows, project_config, max_rows, synthetic_kwargs)
+    splits = prepare_splits(source, n_windows, project_config, max_rows, synthetic_kwargs,
+                            sample_rows=sample_rows, sample_seed=seed)
     if verbose:
         s = splits.summary()
         print(f"[data] {s['source']}: train={s['train']['transactions']} cal={s['calibration']['transactions']} "
@@ -1021,6 +1039,18 @@ def run_drift_evaluation(source: str = "auto", profile: str = "fast", n_windows:
         if path is not None:
             Path(path).parent.mkdir(parents=True, exist_ok=True)
             writer(path)
+    if service_path is not None and PROPOSED_MODEL in systems:
+        # Persist the exact MG-ECFM pipeline that produced the reported metrics.
+        from src.orchestrator.service import MGECFMService, ServiceConfig
+        service = MGECFMService.from_evaluated(
+            systems[PROPOSED_MODEL], splits, predictions,
+            ServiceConfig.for_profile(profile, source=source, seed=seed), hp)
+        service.save(Path(service_path))
+        manifest["service_path"] = str(service_path)
+        if manifest_path is not None:
+            Path(manifest_path).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+        if verbose:
+            print(f"[saved] {service_path}", flush=True)
     if verbose:
         print(summarise(metrics)[["model", "pr_auc_mean", "roc_auc_mean", "f1_mean", "f2_mean",
                                   "brier_mean", "expected_monetary_loss_mean"]].to_string(index=False))
@@ -1054,7 +1084,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--models", nargs="+", default=list(MODEL_ORDER), choices=list(MODEL_ORDER))
     ap.add_argument("--poison-rate", type=float, default=0.10)
     ap.add_argument("--label-delay-windows", type=int, default=1)
-    ap.add_argument("--max-rows", type=int, default=None)
+    ap.add_argument("--max-rows", type=int, default=None, help="use the first N rows only")
+    ap.add_argument("--sample-rows", type=int, default=None,
+                    help="uniform random sample of N rows over the whole stream (seeded, order kept)")
+    ap.add_argument("--save-service", type=Path, default=None,
+                    help="save the evaluated MG-ECFM service (pickle) to this path")
     ap.add_argument("--drift-strength", type=float, default=0.5,
                     help="synthetic camouflage drift strength in [0, 1]")
     ap.add_argument("--n-steps", type=int, default=400, help="synthetic stream length (steps)")
@@ -1069,7 +1103,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                          results_path=args.output,
                          predictions_path=args.output.with_name("drift_evaluation_predictions.csv"),
                          manifest_path=args.output.with_name("drift_evaluation_manifest.json"),
-                         seed=args.seed)
+                         seed=args.seed, sample_rows=args.sample_rows,
+                         service_path=args.save_service)
     return 0
 
 

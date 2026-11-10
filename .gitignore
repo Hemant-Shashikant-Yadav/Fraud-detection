@@ -25,3 +25,6 @@ reports/manifests/**
 # Large result files (>100 MB, GitHub limit)
 reports/drift_evaluation_predictions.csv
 .DS_Store
+
+# Trained models (too large for GitHub)
+models/*.pkl

@@ -450,7 +450,8 @@ def run_ablation_study(source: str = "auto", profile: str = "fast", n_windows: i
                        hyperparams_override: Optional[Mapping[str, Any]] = None,
                        results_path: Optional[Path] = DEFAULT_RESULTS_PATH,
                        windows_path: Optional[Path] = DEFAULT_WINDOWS_PATH,
-                       seed: int = SEED, verbose: bool = True) -> Tuple[pd.DataFrame, Dict[str, ArmRun]]:
+                       seed: int = SEED, verbose: bool = True,
+                       sample_rows: Optional[int] = None) -> Tuple[pd.DataFrame, Dict[str, ArmRun]]:
     """Run B1 - B5 and return ``(summary_frame, runs)``; writes the CSV outputs."""
     set_global_seed(seed)
     hyperparams, pc = load_configs()
@@ -458,7 +459,8 @@ def run_ablation_study(source: str = "auto", profile: str = "fast", n_windows: i
     if hyperparams_override is not None:
         hp = copy.deepcopy(dict(hyperparams_override))
     if splits is None:
-        splits = prepare_splits(source, n_windows, pc, max_rows, synthetic_kwargs)
+        splits = prepare_splits(source, n_windows, pc, max_rows, synthetic_kwargs,
+                                sample_rows=sample_rows, sample_seed=seed)
     loss_fn = make_loss(pc)
     p0 = float(hp["martingale_eprocess"]["admission"]["p0"])
     rules = candidate_feed(pc, hp, splits.feature_names, poison_rate,
@@ -607,6 +609,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--poison-rate", type=float, default=0.10)
     ap.add_argument("--label-delay-windows", type=int, default=1)
     ap.add_argument("--max-rows", type=int, default=None)
+    ap.add_argument("--sample-rows", type=int, default=None,
+                    help="uniform random sample of N rows over the whole stream (seeded, order kept)")
     ap.add_argument("--drift-strength", type=float, default=0.5)
     ap.add_argument("--n-steps", type=int, default=400)
     ap.add_argument("--seed", type=int, default=SEED)
@@ -614,7 +618,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = ap.parse_args(argv)
     run_ablation_study(source=args.source, profile=args.profile, n_windows=args.n_windows,
                        poison_rate=args.poison_rate, label_delay_windows=args.label_delay_windows,
-                       max_rows=args.max_rows,
+                       max_rows=args.max_rows, sample_rows=args.sample_rows,
                        synthetic_kwargs={"drift_strength": args.drift_strength, "n_steps": args.n_steps,
                                          "seed": args.seed},
                        results_path=args.output,

@@ -105,6 +105,8 @@ class BaseStreamLoader(abc.ABC):
         max_rows: Optional[int] = None,
         ensure_sorted: bool = True,
         passthrough_columns: Sequence[str] = (),
+        sample_rows: Optional[int] = None,
+        sample_seed: int = 42,
     ) -> None:
         self.path = Path(path)
         if not self.path.is_file():
@@ -118,6 +120,10 @@ class BaseStreamLoader(abc.ABC):
         self.chunksize = int(chunksize)
         self.max_rows = int(max_rows) if max_rows is not None else None
         self.ensure_sorted = bool(ensure_sorted)
+        if sample_rows is not None and max_rows is not None:
+            raise ValueError("use either max_rows (first N rows) or sample_rows (uniform sample), not both")
+        self.sample_rows = int(sample_rows) if sample_rows is not None else None
+        self.sample_seed = int(sample_seed)
         self.passthrough_columns = tuple(passthrough_columns)
         leaked = [c for c in self.passthrough_columns if c in FORBIDDEN_FEATURE_COLUMNS]
         if leaked:
@@ -180,6 +186,19 @@ class BaseStreamLoader(abc.ABC):
     def _raw_chunks(self) -> Iterator[pd.DataFrame]:
         usecols = self._usecols()
         scan = self.scan_time_column()
+        if self.sample_rows is not None and (scan.is_sorted or not self.ensure_sorted):
+            # Uniform row sample over the whole stream (chronological order kept),
+            # so a size-limited run still spans every step instead of a prefix.
+            k = min(self.sample_rows, scan.n_rows)
+            keep = np.zeros(scan.n_rows, dtype=bool)
+            keep[np.random.default_rng(self.sample_seed).choice(scan.n_rows, size=k, replace=False)] = True
+            offset = 0
+            for chunk in pd.read_csv(self.path, usecols=usecols, chunksize=self.chunksize, low_memory=False):
+                m = keep[offset:offset + len(chunk)]
+                offset += len(chunk)
+                if m.any():
+                    yield chunk.loc[m].reset_index(drop=True)
+            return
         if scan.is_sorted or not self.ensure_sorted:
             reader = pd.read_csv(self.path, usecols=usecols, chunksize=self.chunksize,
                                  nrows=self.max_rows, low_memory=False)
@@ -191,6 +210,9 @@ class BaseStreamLoader(abc.ABC):
         frame = frame.sort_values("__sort_key", kind="mergesort").drop(columns="__sort_key")
         if self.max_rows is not None:
             frame = frame.iloc[: self.max_rows]
+        elif self.sample_rows is not None and self.sample_rows < len(frame):
+            idx = np.random.default_rng(self.sample_seed).choice(len(frame), size=self.sample_rows, replace=False)
+            frame = frame.iloc[np.sort(idx)]
         frame = frame.reset_index(drop=True)
         for start in range(0, len(frame), self.chunksize):
             yield frame.iloc[start:start + self.chunksize]
@@ -467,13 +489,16 @@ def build_loader(
     repo_root: Path = Path("."),
     chunksize: Optional[int] = None,
     max_rows: Optional[int] = None,
+    sample_rows: Optional[int] = None,
+    sample_seed: int = 42,
 ) -> BaseStreamLoader:
     """Instantiate the configured loader for ``dataset``."""
     ds = project_config["datasets"][dataset]
     root = Path(repo_root)
     size = int(chunksize or ds.get("chunksize", 250_000))
     if dataset == "paysim":
-        return PaySimLoader(root / ds["transaction_path"], chunksize=size, max_rows=max_rows)
+        return PaySimLoader(root / ds["transaction_path"], chunksize=size, max_rows=max_rows,
+                            sample_rows=sample_rows, sample_seed=sample_seed)
     if dataset == "ieee_cis":
         ident = ds.get("identity_path")
         rows = max_rows if max_rows is not None else ds.get("subset_rows")
