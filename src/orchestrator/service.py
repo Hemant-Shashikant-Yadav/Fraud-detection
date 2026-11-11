@@ -67,6 +67,50 @@ SERVICE_FORMAT_VERSION = 1
 REPLAY_CHUNK_ROWS = 250_000   # causal-engineer replay chunk (memory bound, result-neutral)
 
 
+class _ServiceUnpickler(pickle.Unpickler):
+    """Resolve classes pickled under ``__main__`` (a script run directly) to their real modules."""
+
+    _FALLBACK_MODULES = ("experiments.run_drift_eval", "experiments.run_ablation_study",
+                         "src.orchestrator.service")
+
+    def find_class(self, module: str, name: str):
+        if module == "__main__":
+            import importlib
+            for mod in self._FALLBACK_MODULES:
+                found = getattr(importlib.import_module(mod), name, None)
+                if found is not None:
+                    return found
+        return super().find_class(module, name)
+
+
+def _tolerant_booster_setstate(original):
+    """Booster unpickling that survives a config block the local XGBoost cannot parse.
+
+    A model pickled on macOS/Linux stores ``max_cached_hist_node = 2**64 - 1`` in its config, which
+    the Windows build (32-bit ``unsigned long``) rejects with "input stream corrupted". The
+    ``Model`` section of the same buffer loads fine and holds every tree, so restore from that.
+    """
+
+    def setstate(self, state):
+        import struct
+
+        import xgboost as xgb
+        try:
+            return original(self, state)
+        except xgb.core.XGBoostError:
+            buf = bytes(state["handle"])
+            marker = struct.pack(">Q", 5) + b"Model"      # UBJSON key "Model": 8-byte length + text
+            key = buf.find(marker)
+            if key < 0:
+                raise
+            booster = xgb.Booster()
+            booster.load_model(bytearray(buf[key + len(marker):-1]))
+            self.__dict__.update(booster.__dict__)
+            booster.handle = None          # ownership moved to ``self``; avoid a double free
+
+    return setstate
+
+
 def utc_clock() -> str:
     """Default knowledge-store timestamp (picklable replacement for the store's lambda clock)."""
     return datetime.now(timezone.utc).isoformat(timespec="microseconds")
@@ -737,7 +781,13 @@ class MGECFMService:
     @classmethod
     def load(cls, path: Path) -> "MGECFMService":
         with open(Path(path), "rb") as fh:
-            payload = pickle.load(fh)
+            import xgboost as xgb
+            original = xgb.core.Booster.__setstate__
+            xgb.core.Booster.__setstate__ = _tolerant_booster_setstate(original)
+            try:
+                payload = _ServiceUnpickler(fh).load()
+            finally:
+                xgb.core.Booster.__setstate__ = original
         if payload.get("format") != SERVICE_FORMAT_VERSION:
             raise ValueError(f"unsupported service file format {payload.get('format')}")
         service: MGECFMService = payload["service"]
