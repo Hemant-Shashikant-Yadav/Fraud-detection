@@ -47,3 +47,10 @@ XGBoost parameters (`hist`, depth 6, LR 0.05, `aucpr` eval metric, ...), `n_esti
 * Because training is cost-weighted, the raw sigmoid is **not** a probability; only the calibrated output is.
 * The default calibrator is isotonic; Venn-Abers is only used if configured.
 * In our PaySim run the Brier score of MG-ECFM (0.111) was worse than BP1 (0.062) — calibration quality is something to investigate before the paper.
+
+## Update 2026-11-21: isotonic tie-break
+
+* `IsotonicCalibrator(tie_break_eps)`: the PAV map is a step function. On PaySim it merged about 5,700 distinct margins into 67 probability values, and the ties cost about 0.04 PR-AUC on the operating split.
+* With `tie_break_eps = ε > 0`, `predict` returns `(1 − ε)·p_iso + ε·sigmoid(margin)`. The output is strictly increasing in the margin (the raw ranking is kept), and each probability moves by at most ε.
+* Config: `hyperparams.json → xgboost.calibration.tie_break_eps` (1e-6). `TabularEngineConfig.isotonic_tie_break_eps` carries it to `calibrate`. Models saved before this option have no attribute and keep ε = 0.
+* Effect on the PaySim 2M test set: PR-AUC 0.571 → 0.593, Brier unchanged, router decisions unchanged.

@@ -660,6 +660,26 @@ class TestFusionClassifier(unittest.TestCase):
             model.fit(self.cal, self.train)
 
 
+class TestIsotonicTieBreak(unittest.TestCase):
+    """The tie-break keeps the margin ranking and stays within eps of the PAV map."""
+
+    def test_tie_break_keeps_ranking_and_calibration(self) -> None:
+        from src.detection.tabular_engine import IsotonicCalibrator
+        rng = np.random.default_rng(0)
+        s = rng.normal(0, 3, 5000)
+        y = (rng.random(5000) < 1 / (1 + np.exp(-(s - 4)))).astype(int)
+        plain = IsotonicCalibrator().fit(s, y)
+        tie = IsotonicCalibrator(tie_break_eps=1e-6).fit(s, y)
+        grid = np.sort(rng.normal(0, 3, 2000))
+        p0, p1 = plain.predict(grid), tie.predict(grid)
+        self.assertLess(np.unique(p0).size, 200)                  # PAV step function
+        self.assertEqual(np.unique(p1).size, np.unique(grid).size)  # no ties left
+        self.assertTrue(np.all(np.diff(p1) > 0))
+        self.assertLessEqual(np.abs(p1 - p0).max(), 1e-6 + 1e-15)
+        with self.assertRaises(ValueError):
+            IsotonicCalibrator(tie_break_eps=0.6)
+
+
 if __name__ == "__main__":
     set_global_seed(SEED)
     unittest.main(verbosity=2)

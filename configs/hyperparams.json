@@ -23,6 +23,7 @@
     },
     "calibration": {
       "method": "isotonic",
+      "tie_break_eps": 1e-6,
       "fallback": "venn_abers",
       "fit_split": "calibration"
     },
