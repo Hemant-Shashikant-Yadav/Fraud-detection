@@ -1,6 +1,6 @@
 # MG-ECFM compared with the earlier Evidence-Gated project and BP1–BP4
 
-*Generated on 2026-11-20 from `reports/prior_work_comparison.json`. All numbers in this file come from code in this repository. Section 9 gives the commands.*
+*Updated on 2026-11-21 from `reports/prior_work_comparison.json` (after the router fix). All numbers in this file come from code in this repository. Section 10 gives the commands.*
 
 ## 1. Purpose and sources
 
@@ -99,49 +99,93 @@ Result: **MG-ECFM has a significantly higher F1 than all 7 other models** (Holm 
 
 > Note: `paper_tables.md` Table 2 uses a two-sided Wilcoxon test on PR-AUC only, so it shows p = 1.000. The one-sided test on F1 is the correct test for the claim "MG-ECFM is better".
 
-## 5. Monetary outcome (same cost matrix for all models)
+## 5. Monetary outcome
 
-Costs from `configs/project_config.json`: missed fraud = full amount; step-up = 5 (+10% of the amount if fraud); hold = 25; block of a genuine customer = 150. If the system approves all transactions, the loss is 652.49M.
+### 5.1 The router fix
 
-| Model | Fraud value blocked at τ | Net loss, approve/block at τ | Net loss, Bayes 4-action routing | Genuine customers with friction (Bayes) |
+The first version of this report showed a CS-ACRC loss of 213.9M for MG-ECFM. Section 6 explains the cause. The router is now replaced by the **budgeted Bayes CS-ACRC router** (`src/conformal/budgeted_crc.py`):
+
+1. For each transaction, the router selects the action with the lowest expected cost: `argmin_a E[L(a) | q, amount]`. The router uses the amount of each transaction, and it has no fixed λ bands.
+2. A price ν for each intervention keeps the long-run intervention rate at the budget ρ = 3%. ν is updated online by dual ascent from the released feedback.
+3. An online intercept shift θ corrects the probabilities when the fraud rate drifts. The shift is updated from released labels only.
+
+Both online updates have anytime guarantees of the ACI type. All settings were selected on the operating split (steps 576–631) before the test run: γ_b = 0.001, γ_c = 0.02, ρ = 3%. The price ν starts from a label-free warm start on the calibration scores.
+
+### 5.2 Result of the pipeline (MG-ECFM own policy, 28,259 test transactions)
+
+| | Old router (λ bands) | **New router (budgeted Bayes)** |
+|:---|:---:|:---:|
+| Net monetary loss | 213.89M | **13.94M** (−93%) |
+| Fraud value stopped before settlement (Hold or Block) | 67.2% | **97.9%** |
+| Frauds approved (of 404) | 311 | **122** |
+| Intervention rate (all transactions) | 0.3% | 4.6% |
+| Genuine customers with friction | ~0% | 3.7% |
+
+The new router used 4.6% interventions against a 3% budget. In the test period the fraud rate is 1.43%, almost twice the operating rate (0.78%). The step size γ_b = 0.001 adapts slowly over 28,259 transactions. The budget guarantee is a long-run bound, and for this short stream it is loose.
+
+For reference, the baselines with approve/block at τ lose 105.0M (BP2) to 328.6M (BP3), at 0.6–1.0% interventions. These numbers come from different intervention rates, so they are not an equal-friction comparison. Section 5.3 gives the fair comparison.
+
+### 5.3 Equal-friction comparison (the main monetary result)
+
+A model that intervenes more will lose less money. A fair comparison must therefore use the same intervention rate for all models. For each model, the script sweeps the intervention price ν of the Bayes rule over a fixed grid (no labels are used by any decision). It then reports the lowest net loss at each intervention-rate cap. This is the same idea as reading an ROC curve at a fixed false-positive rate.
+
+**Lowest net loss at the same intervention rate (lower is better):**
+
+| Intervention rate ≤ | **MG-ECFM** | Prior: B1 | Prior: B1 + Platt | Prior: B1 + graph | BP1 | BP2 | BP3 | BP4 |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 1% | **49.67M** | 131.56M | 109.64M | 73.62M | 67.04M | 66.70M | 70.24M | 61.95M |
+| 2% | **31.79M** | 103.52M | 91.80M | 43.22M | 38.33M | 39.12M | 40.19M | 37.95M |
+| 3% | **22.22M** | 83.08M | 79.85M | 34.43M | 28.57M | 26.21M | 28.00M | 29.27M |
+| 5% | **12.14M** | 68.67M | 71.13M | 20.51M | 22.49M | 17.19M | 18.82M | 16.01M |
+
+**Fraud value stopped at the same intervention rate:**
+
+| Intervention rate ≤ | **MG-ECFM** | Best prior-work variant | Best baseline |
+|:---:|:---:|:---:|:---:|
+| 1% | **92.4%** | 88.7% | 90.5% (BP4) |
+| 2% | **95.1%** | 93.4% | 94.2% (BP4) |
+| 3% | **96.6%** | 94.7% | 96.0% (BP2) |
+| 5% | **98.1%** | 96.9% | 97.6% (BP4) |
+
+MG-ECFM has the lowest loss at every intervention rate. At the 1% rate it also has the fewest genuine customers with friction (0.39% of genuine transactions; the others have 0.47–0.62%).
+
+### 5.4 Statistical proof of the savings
+
+The method is a paired window-block bootstrap (2,000 resamples of the 50 windows) of the saving "loss of the other model − loss of MG-ECFM". The p-value is one-sided. No multiple-comparison correction is applied.
+
+| Compared with | Saving at 1% | Saving at 2% | Saving at 3% | Saving at 5% |
 |:---|:---:|:---:|:---:|:---:|
-| **MG-ECFM (ours)** | **91.9%** | **52.77M** | **0.301M** | **10,162** |
-| Prior work: B1 XGBoost | 81.7% | 119.74M | 0.803M (raw) / 0.341M (Platt) | 16,258 / 15,541 |
-| Prior work: B1 + graph counts | 80.4% | 127.64M | 0.445M | 12,887 |
-| BP1 EARN+RXT-J | 82.5% | 114.46M | 0.648M | 27,753 |
-| BP2 GNN+AE | 83.9% | 104.99M | 0.447M | 18,774 |
-| BP3 CARE-GNN | 49.6% | 328.58M | 0.578M | 26,724 |
-| BP4 ARGUS | 79.5% | 134.02M | 0.308M | 17,393 |
+| Prior: B1 XGBoost | **81.9M** (p < 0.001) | **71.7M** (p < 0.001) | **60.9M** (p < 0.001) | **56.5M** (p < 0.001) |
+| Prior: B1 + Platt | **60.0M** (p < 0.001) | **60.0M** (p < 0.001) | **57.6M** (p < 0.001) | **59.0M** (p < 0.001) |
+| Prior: B1 + graph counts | **24.0M** (p < 0.001) | **11.4M** (p < 0.001) | **12.2M** (p < 0.001) | **8.4M** (p < 0.001) |
+| BP1 EARN+RXT-J | **17.4M** (p < 0.001) | **6.5M** (p = 0.012) | 6.4M (p = 0.034, CI includes 0) | **10.4M** (p < 0.001) |
+| BP2 GNN+AE | **17.0M** (p < 0.001) | **7.3M** (p = 0.004) | 4.0M (p = 0.085) | **5.1M** (p = 0.019) |
+| BP3 CARE-GNN | **20.6M** (p < 0.001) | **8.4M** (p = 0.015) | **5.8M** (p = 0.011) | **6.7M** (p < 0.001) |
+| BP4 ARGUS | **12.3M** (p < 0.001) | **6.2M** (p = 0.015) | **7.1M** (p = 0.004) | 3.9M (p = 0.030, CI includes 0) |
 
-The two policies:
+Bold: the 95% CI is above 0. The savings against the prior work are significant at every rate. The savings against all four baselines are significant at 1% and 2%. At 3% and 5%, three comparisons are not significant.
 
-- **Approve/block at τ**: each model blocks the transactions above its own operating threshold. **MG-ECFM loses 50% less money than the best other model (BP2)**. It loses 56% less than the prior work.
-- **Bayes 4-action routing**: for each transaction, the rule selects the action with the lowest expected cost: `argmin_a E[L(a) | p, amount]`. The rule has no parameters, and it uses no test labels. MG-ECFM has the lowest loss. It also puts friction on the fewest genuine customers: 21% fewer than the next best model (the prior-work B1 + graph counts).
+### 5.5 Other policies (unchanged from the first version)
 
-> The router that the evaluation actually used (CS-ACRC) gave MG-ECFM a loss of 213.89M. Section 6 explains why. Do not use the CS-ACRC loss as evidence for MG-ECFM until the router is fixed and the evaluation is run again.
+- **Approve/block at τ:** MG-ECFM loses 52.77M. The best other model (BP2) loses 104.99M, and the prior-work B1 loses 119.74M.
+- **Bayes rule without a budget (ν = 0):** MG-ECFM loses 0.30M, the lowest of all models. But this policy puts friction on 37% of the transactions, so it is not realistic.
 
-## 6. Why the CS-ACRC monetary loss is high: the threshold mismatch
+## 6. Why the old CS-ACRC loss was high (now fixed)
 
-MG-ECFM uses two different thresholds:
+The old router used two different thresholds:
 
 | Decision | Threshold | Used for |
 |:---|:---|:---|
 | Detection (`yhat`) | τ = 0.108 (F1-optimal on the operating split) | F1, precision, recall, McNemar |
 | Action (`action`) | CS-ACRC λ ≈ (0.934, 0.944, 0.954) | EML, intervention rate |
 
-The detection layer flags 49% of the frauds (p ≥ τ). The router acts only when p ≥ 0.934. Thus the router approved **311 of the 404 frauds**. **106 of these frauds (161M) were flagged by the detector but approved by the router.** The router blocked only 93 of the 28,259 transactions.
+The router acted only when p ≥ 0.934, so it approved 311 of the 404 frauds. 106 of these frauds (161M) were flagged by the detector. The λ values went up for three reasons:
 
-The CS-ACRC thresholds went up to 0.93 because the risk budget is too loose for PaySim:
+1. **The risk target was above the fraud rate.** With α = 0.02 and a capped loss of 1 per missed fraud, "approve everything" stays inside the budget (fraud rate 0.5–1.4%). The controller always raised the thresholds.
+2. **The loss cap removed the amount.** `ell = min(L / 10,000, 1)` gives the same loss for a missed fraud of 10,000 and one of 5,000,000.
+3. **The bands were too narrow.** The minimum gap of 0.01 left Step-Up and Hold almost empty.
 
-1. **The target is above the fraud rate.** The controller keeps the mean normalised loss at α = 0.02. The capped loss of a missed fraud is 1, so the "approve everything" policy gives a mean loss of about the fraud rate (0.5–1.4%). This value is less than 0.02, so the controller always sees the system as "under budget". Each approved genuine transaction then raises all λ by γα = 0.0001.
-2. **The loss cap removes the amount.** `ell = min(L / 10,000, 1)`. A missed fraud of 10,000 and a missed fraud of 5,000,000 both give ell = 1. The mean fraud amount in the test set is 1.6M, so the controller cannot see the size of the losses.
-3. **The Step-Up and Hold bands are almost empty.** The minimum gap between the λ values is 0.01, and the scores are isotonic step values. The result was 0 step-ups and 1 hold.
-
-The scores are good: with the same approve/block rule, MG-ECFM has the lowest loss of all models (Section 5). The fault is in the router configuration. Suggested fix (this requires a new full evaluation run):
-
-1. Set `target_risk_alpha` below the operating-split fraud rate, or use an amount-weighted loss without the cap at 1.
-2. Start λ at the Bayes-optimal cut points from the cost matrix. Do not use the fixed (0.2, 0.5, 0.85).
-3. Report CS-ACRC EML and the F1 at τ from the same decision rule.
+The new router removes all three causes. It routes on expected cost with the real amount, and it controls a quantity that binds: the intervention rate. The legacy controller stays in the code (`decision_rule: "threshold"`) for comparison.
 
 ## 7. Method comparison with the prior work
 
@@ -154,14 +198,16 @@ Sources: assessment report Sections 2, 6 and 9, and the code in this repository.
 | Leakage control | Temporal split; balance columns "not confirmed fully addressed" | Post-event balance columns removed and checked before feature creation | Table 1 in `paper_tables.md` |
 | Evidence gate | Fixed constants (`MIN_PROVENANCE = 1.00`, `MIN_GATE_SCORE = 0.75`) | Subjective Logic opinions + martingale e-process admission and rollback | `src/epistemic_gate/` |
 | Guarantee on false admission | None | Ville's inequality, P(sup M_t ≥ 1/α) ≤ α, checked in 3 ways | Table 4 in `paper_tables.md` |
-| Uncertainty / routing | Platt calibration, fixed policies A–D | Online adaptive conformal risk control, 4 actions | `src/conformal/` (Section 6 shows the current configuration problem) |
+| Routing | Platt calibration, fixed policies A–D | Budgeted Bayes routing on the cost matrix, with an anytime bound on the intervention rate and an online drift correction | `src/conformal/budgeted_crc.py` |
 | SOTA baselines | BP5 "PENDING REPRODUCTION" | BP1–BP4 re-implemented and run on the same rows | `src/baselines/` |
 | Drift evaluation | One test window | 50 chronological windows with label delay | `experiments/run_drift_eval.py` |
-| Significance tests | None | Wilcoxon, McNemar, bootstrap CI, Holm correction | Section 4, `experiments/statistical_significance.py` |
+| Significance tests | None | Wilcoxon, McNemar, bootstrap CI, Holm correction | Sections 4 and 5.4 |
 | Poisoning test | Done (Day 27), no numbers in the report | 5 poison rates, false admissions measured, rollback time measured | Table 4 in `paper_tables.md` |
 | RAG/LLM assist | "NOT QUANTIFIED" | Kept off the decision path and measured as an ablation arm | Table 3 in `paper_tables.md` |
 
-## 8. Robustness of the knowledge gate (from `paper_tables.md`, Table 4)
+## 8. Robustness of the knowledge gate
+
+### 8.1 Poisoning stress test (from `paper_tables.md`, Table 4)
 
 | Share of poisoned candidates | Harmful rules admitted: martingale gate | Harmful rules admitted: no gate | Harmful active rules rolled back | Mean / max cycles to rollback |
 |:---:|:---:|:---:|:---:|:---:|
@@ -171,7 +217,16 @@ Sources: assessment report Sections 2, 6 and 9, and the code in this repository.
 | 20% | **1.5%** | 100% | 100% | 1.16 / 4 |
 | 25% | **0.0%** | 100% | 100% | 1.12 / 5 |
 
-The Ville bound (α = 0.05) holds at all 5 poison rates. The prior work has no number for this comparison, so the claim for this table is a capability claim. It is not a head-to-head number.
+The Ville bound (α = 0.05) holds at all 5 poison rates.
+
+### 8.2 Effect of the gate on customers (from `paper_tables.md`, Table 3)
+
+| Ablation arm | Net loss | Intervention rate |
+|:---|:---:|:---:|
+| B2: gate OFF (all 200 candidate rules admitted, 10% poisoned) | 65.39M | **99.97%** |
+| B4: full MG-ECFM (martingale gate ON) | **13.94M** | **4.6%** |
+
+Without the gate, the admitted rules fire on almost every payment, and the rule floor sends each of these payments to Step-Up. With the gate, the loss is 4.7 times lower and the friction is 22 times lower.
 
 ## 9. Claims for the paper
 
@@ -180,30 +235,37 @@ The Ville bound (α = 0.05) holds at all 5 poison rates. The prior work has no n
 1. MG-ECFM has the highest PR-AUC, ROC-AUC, recall, F1, F2 and recall at 1% FPR of all 8 models on the same 28,259 test transactions.
 2. MG-ECFM is significantly better than the prior work on PR-AUC (+0.27, p < 0.001) and on F1 (+0.21, Holm p < 0.001).
 3. MG-ECFM has a significantly higher per-window F1 than all four published baselines (Holm p ≤ 0.028).
-4. With the same approve/block rule, MG-ECFM loses 50% less money than the best baseline and 56% less than the prior work. It also blocks 91.9% of the fraud value.
-5. With the same parameter-free cost-optimal routing, MG-ECFM has the lowest loss and the lowest number of genuine customers with friction.
-6. The martingale gate keeps harmful admissions at 1.6% or less up to a 25% poison rate. It has a proven bound, and the prior work has no bound.
+4. **At equal intervention rates, MG-ECFM has the lowest monetary loss of all 8 models** (1%, 2%, 3% and 5%). The savings are significant against all 7 models at 1% and 2%.
+5. Against the prior work, MG-ECFM saves 8–82M (26–83% of the prior-work loss) at every intervention rate (p < 0.001).
+6. With the new router, MG-ECFM stops 97.9% of the fraud value before settlement, and it loses 93% less than with the old router.
+7. The martingale gate keeps harmful admissions at 1.6% or less up to a 25% poison rate. Without the gate, 99.97% of the payments get friction.
 
 ### 9.2 Claims that the data does not support (do not make these claims)
 
 1. "MG-ECFM has a significantly higher PR-AUC than BP1, BP2 or BP4." The 95% CIs include 0.
-2. "CS-ACRC reduces monetary loss." With the current configuration, CS-ACRC increases the loss (Section 6).
-3. "Each component adds detection quality." In Table 3, XGBoost on our 32 causal features (B1, PR-AUC 0.594) has a higher PR-AUC than the full system (0.571). Thus a large part of the gain over the prior work comes from the leakage-free causal features, not from the graph or the gate.
-4. "MG-ECFM is faster than the prior work." The prior-work XGBoost needs about 0.0001 ms per transaction. MG-ECFM needs 0.385 ms. This is in the 1 ms budget, but it is slower.
+2. "The monetary savings against the baselines are significant at every intervention rate." At 3% (BP1, BP2) and at 5% (BP4), the CIs include 0.
+3. "The router keeps the intervention rate at exactly 3%." It used 4.6% in the test period (Section 5.2).
+4. "The adaptive budget lowers the loss." The static variant (price frozen after the warm-up) lost 11.86M at 5.4% interventions. The adaptive part keeps the friction nearer the budget, but at equal friction it does not lower the loss.
+5. "Each component adds detection quality." XGBoost on our 32 causal features alone has a PR-AUC of 0.594, more than the full system (0.571). A large part of the gain over the prior work comes from the leakage-free causal features.
+6. "The knowledge base and the recovery module improve the result." In this run the gate admitted 0 rules, and B4 (recovery ON) has the same net loss as B3 (recovery OFF).
+7. "MG-ECFM is faster than the prior work." The prior-work XGBoost needs about 0.0001 ms per transaction, and MG-ECFM needs about 0.2–0.4 ms.
 
 ### 9.3 Limits of this comparison
 
 - The prior-work numbers come from our reproduction of its documented features and model. The original notebooks are not in this repository. The reproduced values are near the reported values (Section 2.1).
-- The test set is a seeded 2M-row sample. The prior work used the full 6.36M rows. The reproduction uses the sample so that all models score the same rows.
-- The approve/block and Bayes policies are applied after the run to the saved probabilities. They use no test labels and no fitted parameters, and they are the same for all models.
+- The test set is a seeded 2M-row sample. The prior work used the full 6.36M rows.
+- MG-ECFM was trained again for the router run (CPU). Its scores differ from the first run by at most 0.0012, and all 28,259 decisions at τ are the same. The baselines were not trained again, because they do not use the router.
+- The equal-friction table selects ν per model on the test rows to reach each intervention cap. This uses no labels in the decisions, and it is the same for all models, like an ROC curve. The selection of the lowest loss on the curve uses the test labels, the same for all models.
 
 ## 10. How to reproduce
 
 1. Run the drift evaluation (this step creates `reports/drift_evaluation_predictions.csv`):
-   `python experiments/run_drift_eval.py --source paysim --sample-rows 2000000`
-2. Reproduce the prior-work detectors on the same splits:
+   `MG_ECFM_DEVICE=cpu python experiments/run_drift_eval.py --source paysim --sample-rows 2000000`
+2. Run the ablation:
+   `MG_ECFM_DEVICE=cpu python experiments/run_ablation_study.py --source paysim --sample-rows 2000000`
+3. Reproduce the prior-work detectors on the same splits:
    `python experiments/run_prior_work_comparison.py`
-3. Compute all metrics in this report:
+4. Compute all metrics in this report:
    `python experiments/compare_with_prior_work.py`
 
 Outputs: `reports/prior_work_predictions.csv`, `reports/prior_work_fit.json`, `reports/prior_work_comparison.json`.

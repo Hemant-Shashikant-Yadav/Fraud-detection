@@ -20,6 +20,9 @@ The costs come from `configs/project_config.json`.
 * `bayes_net_loss`: parameter-free Bayes-optimal 4-action routing, `argmin_a E[L(a) | p, amount]`:
   `E[approve] = p·A`, `E[step-up] = c_step + p·β·A`, `E[hold] = c_hold`, `E[block] = (1 − p)·c_block`.
 * `logged_router_net_loss`: the loss of the actions in the predictions file. For MG-ECFM these are the CS-ACRC router actions.
+* `budget_router` (per budget ρ in 1%, 2%, 3%, 5%): the budgeted Bayes router applied to each model's test scores in the same way as the pipeline. The routing is window by window, labels are released one window late, and the price starts from a label-free warm start on the window-1 scores.
+* `cost_curve` (the equal-friction comparison): the intervention price ν is swept over 400 values with θ = 0. No label is used in any decision. For each intervention-rate cap, the lowest net loss is reported. This is the fair way to compare loss, because a model that intervenes more always loses less.
+* `cost_curve_bootstrap`: a paired window-block bootstrap (2,000 resamples) of the loss saving of MG-ECFM against each model at each cap, with a 95% CI and a one-sided p-value.
 
 ## 3. Statistical tests
 

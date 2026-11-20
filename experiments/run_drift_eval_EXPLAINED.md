@@ -49,3 +49,14 @@ Small CPU-friendly baseline configs; `load_json`, `load_configs` (hyperparameter
 ## 3. Things to remember
 * This file defines the **evaluation fairness**: same splits, same windows, thresholds chosen on operating data only.
 * The PaySim-2M drift evaluation recorded `runtime_seconds ≈ 5137` (~86 min); the deck records ~8 774 s for the whole `full-pipeline` run on an Apple-Silicon Mac (CPU, ~8 GB peak RSS). Time is dominated by baseline training (BP3 ≈ 1 426 s, BP4 ≈ 1 005 s, MG-ECFM ≈ 73 s).
+
+## Update 2026-11-21: budgeted Bayes router
+
+* `MGECFMSystem` builds its controller with `build_controller` (`src/conformal/budgeted_crc.py`). The default rule is now `budgeted_bayes`; `decision_rule = "threshold"` restores the legacy λ-band controller.
+* `fit` warm-starts the intervention price on the **calibration** scores (no labels), before the operating split is replayed.
+* `_feedback(frame, actions, p)` passes the scores to the controller, because the drift correction θ needs them. The pending tuples now hold `(due, frame, actions, p)`. Old 3-tuples from saved systems still work.
+* New result columns:
+  * `legit_intervention_rate`: the share of genuine transactions that got Step-Up, Hold or Block.
+  * `fraud_value_stopped`: the share of fraud value that was held or blocked before settlement.
+  * `budget_price_nu`, `calibration_shift_theta`: the router state in each window (MG-ECFM only).
+* For the budgeted Bayes router, the `lambda_*` columns hold the probability cut points at the reference amount (100,000). They are for figures only; each decision uses the transaction's own amount.

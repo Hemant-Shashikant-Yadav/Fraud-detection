@@ -80,6 +80,17 @@
   },
   "conformal_crc": {
     "actions": ["approve", "step_up", "hold", "block"],
+    "decision_rule": "budgeted_bayes",
+    "budgeted_bayes": {
+      "intervention_budget": 0.03,
+      "gamma_budget": 0.001,
+      "gamma_calibration": 0.02,
+      "eta_max": 20.0,
+      "theta_max": 4.0,
+      "calibration_shift": true,
+      "reference_amount": 100000.0,
+      "warm_start_on_calibration": true
+    },
     "target_risk_alpha": 0.02,
     "gamma_step_size": 0.005,
     "lambda_init": {"low": 0.20, "mid": 0.50, "high": 0.85},

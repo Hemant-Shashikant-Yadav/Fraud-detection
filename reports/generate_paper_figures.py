@@ -329,9 +329,16 @@ def figure_crc_thresholds(results: pd.DataFrame, manifest: Optional[Mapping[str,
         if onset is not None:
             ax.axvspan(onset, n_win + 0.5, color=SHADE, zorder=0, lw=0)
             ax.axvline(onset, color=INK_2, lw=0.7, ls="--", zorder=1)
-    lam = [("lambda_high", "$\\lambda^{high}$ (Hold | Block)", SLOT[1], "^", "-"),
-           ("lambda_mid", "$\\lambda^{mid}$ (Step-Up | Hold)", SLOT[2], "s", "--"),
-           ("lambda_low", "$\\lambda^{low}$ (Approve | Step-Up)", SLOT[0], "o", "-.")]
+    bayes = "budget_price_nu" in sub.columns and sub["budget_price_nu"].notna().any()
+    if bayes:
+        # Budgeted Bayes router: probability cut points at the reference amount.
+        lam = [("lambda_high", "Hold | Block cut point", SLOT[1], "^", "-"),
+               ("lambda_mid", "Step-Up | Hold cut point", SLOT[2], "s", "--"),
+               ("lambda_low", "Approve | intervene cut point", SLOT[0], "o", "-.")]
+    else:
+        lam = [("lambda_high", "$\\lambda^{high}$ (Hold | Block)", SLOT[1], "^", "-"),
+               ("lambda_mid", "$\\lambda^{mid}$ (Step-Up | Hold)", SLOT[2], "s", "--"),
+               ("lambda_low", "$\\lambda^{low}$ (Approve | Step-Up)", SLOT[0], "o", "-.")]
     for col, label, color, marker, ls in lam:
         y = sub[col].to_numpy(dtype=np.float64)
         ax1.step(x, y, where="mid", color=color, lw=1.3, ls=ls, label=label, zorder=3)
@@ -339,7 +346,7 @@ def figure_crc_thresholds(results: pd.DataFrame, manifest: Optional[Mapping[str,
                  zorder=4)
     ax1.fill_between(x, sub["lambda_low"], 0, step="mid", color=SLOT[0], alpha=0.07, lw=0)
     ax1.set_ylim(0.0, 1.02)
-    ax1.set_ylabel("Threshold $\\lambda_t$ (risk score)")
+    ax1.set_ylabel("Cut point (risk score, A = 100k)" if bayes else "Threshold $\\lambda_t$ (risk score)")
     ax1.legend(loc="upper center", bbox_to_anchor=(0.5, 1.33), ncol=2, fontsize=6.4, columnspacing=0.8)
     if onset is not None:
         ax1.text(onset + 0.4, 0.02, "drift", fontsize=6.4, color=INK_2, ha="left", va="bottom")
@@ -355,7 +362,8 @@ def figure_crc_thresholds(results: pd.DataFrame, manifest: Optional[Mapping[str,
     ax2.set_ylim(0.0, max(1.0, float(np.nanmax(np.concatenate([fraud, inter]))) * 1.25))
     ax2.legend(loc="upper left", fontsize=6.4, ncol=1)
     eml = sub["expected_monetary_loss"].to_numpy(dtype=np.float64)
-    ax2.text(0.99, 0.95, f"target risk $\\alpha$ = {target_alpha:g}\nmean EML = {np.nanmean(eml):.0f}",
+    first = (f"intervention budget $\\rho$ = {target_alpha:g}" if bayes else f"target risk $\\alpha$ = {target_alpha:g}")
+    ax2.text(0.99, 0.95, f"{first}\nmean EML = {np.nanmean(eml):.0f}",
              transform=ax2.transAxes, ha="right", va="top", fontsize=6.2, color=INK_2)
     return save_figure(fig, out_dir, "fig3_cs_acrc_threshold_dynamics")
 
@@ -516,7 +524,11 @@ def generate_figures(reports_dir: Path = REPORTS_DIR, out_dir: Optional[Path] = 
     if verbose:
         print(f"[figure] fig2 martingale wealth     -> {out['fig2']['pdf']}", flush=True)
 
-    alpha = float(hp.get("conformal_crc", {}).get("target_risk_alpha", 0.02))
+    crc_cfg = hp.get("conformal_crc", {})
+    if crc_cfg.get("decision_rule") == "budgeted_bayes":
+        alpha = float(crc_cfg.get("budgeted_bayes", {}).get("intervention_budget", 0.03))
+    else:
+        alpha = float(crc_cfg.get("target_risk_alpha", 0.02))
     out["fig3"] = figure_crc_thresholds(results, manifest, out_dir, alpha)
     if verbose:
         print(f"[figure] fig3 CS-ACRC thresholds    -> {out['fig3']['pdf']}", flush=True)

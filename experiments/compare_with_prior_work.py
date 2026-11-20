@@ -17,6 +17,16 @@ Monetary policies (cost matrix of ``configs/project_config.json``)
   E[approve] = p A, E[step-up] = c_step + p beta A, E[hold] = c_hold,
   E[block] = (1 - p) c_block.  No value is fitted on test data.
 * ``logged``  - the actions actually logged by MG-ECFM's CS-ACRC router.
+* ``budget``  - the budgeted Bayes CS-ACRC router (:mod:`src.conformal.budgeted_crc`)
+  applied to every model's test scores under identical conditions: prequential
+  routing window by window, labels released with a one-window delay, and a
+  label-free warm start of the budget price on the window-1 scores. Budgets
+  ``rho`` in BUDGETS; the same step sizes as the pipeline configuration.
+* ``cost_curve`` - equal-friction comparison. The intervention price ``nu`` of
+  the Bayes rule is swept over a fixed grid (``theta = 0``, no label is used
+  by any decision). For each intervention-rate cap the lowest net loss whose
+  intervention rate is within the cap is reported, like reading an ROC curve
+  at a fixed false-positive rate.
 """
 from __future__ import annotations
 
@@ -30,9 +40,12 @@ from scipy.stats import wilcoxon
 from sklearn.metrics import average_precision_score, roc_auc_score, roc_curve
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 REPORTS = ROOT / "reports"
 SEED = 42
 N_BOOT = 2000
+BUDGETS = (0.01, 0.02, 0.03, 0.05)
 ORDER = ["mg_ecfm", "prior_b1_raw", "prior_b1_cal", "prior_b1_graph", "bp1", "bp2", "bp3", "bp4"]
 
 
@@ -52,6 +65,72 @@ def bayes_actions(p, a):
     c_step, c_hold, c_block, beta = costs()
     exp = np.stack([p * a, c_step + p * beta * a, np.full_like(a, c_hold), (1 - p) * c_block])
     return exp.argmin(axis=0)
+
+
+def budget_router(d: pd.DataFrame, rho: float, delay: int = 1) -> dict:
+    """Prequential budgeted Bayes routing of one model's test scores (see module doc)."""
+    from src.conformal.budgeted_crc import BudgetedBayesCRC
+    from src.conformal.loss_functions import AsymmetricLoss, CostParameters
+    hp = json.loads((ROOT / "configs" / "hyperparams.json").read_text())["conformal_crc"]["budgeted_bayes"]
+    pc = json.loads((ROOT / "configs" / "project_config.json").read_text())
+    ctrl = BudgetedBayesCRC(intervention_budget=rho, gamma_budget=hp["gamma_budget"],
+                            gamma_calibration=hp["gamma_calibration"], eta_max=hp["eta_max"],
+                            theta_max=hp["theta_max"], calibration_shift=hp["calibration_shift"],
+                            loss=AsymmetricLoss(CostParameters.from_config(pc)))
+    y, p, a, w = d.y.to_numpy(), d.p.to_numpy(), d.amount.to_numpy(), d.window.to_numpy()
+    wins = np.unique(w)
+    first = w == wins[0]
+    ctrl.warm_start(p[first], a[first])
+    act = np.zeros(len(d), dtype=np.int64)
+    pending = []
+    for k, win in enumerate(wins):
+        while pending and pending[0][0] <= k:
+            _, idx = pending.pop(0)
+            ctrl.update_batch(act[idx], y[idx], a[idx], p[idx])
+        idx = np.flatnonzero(w == win)
+        act[idx] = ctrl.decide_batch(p[idx], a[idx])
+        pending.append((k + 1 + delay, idx))
+    loss = realised_loss(act, y, a)
+    fv = a[y == 1].sum()
+    return {"net_loss": float(loss.sum()),
+            "intervention_rate_pct": 100.0 * float((act >= 1).mean()),
+            "legit_intervention_pct": 100.0 * float((act[y == 0] >= 1).mean()),
+            "fraud_value_stopped_pct": 100.0 * float(a[(y == 1) & (act >= 2)].sum() / fv),
+            "frauds_approved": int(((y == 1) & (act == 0)).sum()),
+            "step_ups": int((act == 1).sum()), "holds": int((act == 2).sum()),
+            "blocks": int((act == 3).sum())}
+
+
+def cost_curve(d: pd.DataFrame, caps=BUDGETS, n_grid: int = 400) -> dict:
+    """Lowest net loss at each intervention-rate cap over a label-free sweep of nu."""
+    from src.conformal.budgeted_crc import BudgetedBayesCRC
+    from src.conformal.loss_functions import AsymmetricLoss, CostParameters
+    pc = json.loads((ROOT / "configs" / "project_config.json").read_text())
+    ctrl = BudgetedBayesCRC(calibration_shift=False, loss=AsymmetricLoss(CostParameters.from_config(pc)))
+    y, p, a = d.y.to_numpy(), d.p.to_numpy(), d.amount.to_numpy()
+    fv = a[y == 1].sum()
+    pts = []
+    for eta in np.linspace(0.0, ctrl.eta_max, n_grid):
+        ctrl._eta = float(eta)
+        act = ctrl.decide_batch(p, a)
+        pts.append(((act >= 1).mean(), realised_loss(act, y, a).sum(),
+                    a[(y == 1) & (act >= 2)].sum() / fv, (act[y == 0] >= 1).mean()))
+    pts = np.asarray(pts)
+    out = {}
+    for cap in caps:
+        ok = pts[:, 0] <= cap + 1e-12
+        if not ok.any():
+            out[f"{cap:.2f}"] = None
+            continue
+        j = int(np.flatnonzero(ok)[np.argmin(pts[ok][:, 1])])
+        best = pts[j]
+        ctrl._eta = float(np.linspace(0.0, ctrl.eta_max, n_grid)[j])
+        act = ctrl.decide_batch(p, a)
+        out[f"{cap:.2f}"] = {"net_loss": float(best[1]), "eta": ctrl._eta,
+                             "_loss_by_window": pd.Series(realised_loss(act, y, a)).groupby(d.window.to_numpy()).sum(), "intervention_rate_pct": 100.0 * float(best[0]),
+                             "fraud_value_stopped_pct": 100.0 * float(best[2]),
+                             "legit_intervention_pct": 100.0 * float(best[3])}
+    return out
 
 
 def holm(pvals):
@@ -146,9 +225,34 @@ def main() -> None:
         pw[m] = per_window(d)
         r["window_pr_auc_mean"] = float(pw[m].pr_auc.mean())
         r["window_f1_mean"] = float(pw[m].f1.mean())
+        r["budget_router"] = {f"{rho:.2f}": budget_router(d, rho) for rho in BUDGETS}
+        r["cost_curve"] = cost_curve(d)
         if m != "mg_ecfm":
             r["boot_pr_auc_vs_ours"] = block_bootstrap_diff(ref, d, rng)
         result["models"][m] = r
+    # Window-block bootstrap of the net-loss difference at equal intervention caps.
+    rng_l = np.random.default_rng(SEED + 1)
+    wins = ref.window.unique()
+    loss_boot = {}
+    for cap in BUDGETS:
+        k = f"{cap:.2f}"
+        ours = result["models"]["mg_ecfm"]["cost_curve"][k]["_loss_by_window"].reindex(wins, fill_value=0.0).to_numpy()
+        loss_boot[k] = {}
+        for m in ORDER[1:]:
+            other = result["models"][m]["cost_curve"][k]
+            if other is None:
+                continue
+            oth = other["_loss_by_window"].reindex(wins, fill_value=0.0).to_numpy()
+            diffs = np.array([(oth[i] - ours[i]).sum() for i in
+                              (rng_l.integers(0, len(wins), len(wins)) for _ in range(N_BOOT))])
+            loss_boot[k][m] = {"saving": float((oth - ours).sum()),
+                               "ci95": [float(np.quantile(diffs, 0.025)), float(np.quantile(diffs, 0.975))],
+                               "p_one_sided": float((diffs <= 0).mean())}
+    result["cost_curve_bootstrap"] = loss_boot
+    for m in ORDER:
+        for v in result["models"][m]["cost_curve"].values():
+            if v:
+                v.pop("_loss_by_window", None)
     tests = {}
     for metric in ("pr_auc", "f1"):
         raw = {}
@@ -171,6 +275,19 @@ def main() -> None:
     for m in ORDER[1:]:
         print(m, result["models"][m]["boot_pr_auc_vs_ours"])
     print("logged router loss", result["models"]["mg_ecfm"].get("logged_router_net_loss"))
+    print("\n[cost-curve saving of MG-ECFM vs each model, window-block bootstrap]")
+    for k, row in result["cost_curve_bootstrap"].items():
+        for m, v in row.items():
+            print(f"  cap {k} vs {m:<15s} saving {v['saving']/1e6:7.2f}M  CI [{v['ci95'][0]/1e6:7.2f}, {v['ci95'][1]/1e6:7.2f}]  p={v['p_one_sided']:.4f}")
+    print("\n[cost curve: lowest net loss (M) at intervention rate <= cap]")
+    print(pd.DataFrame({m: {k: (v["net_loss"] / 1e6 if v else np.nan)
+                            for k, v in result["models"][m]["cost_curve"].items()} for m in ORDER}).T
+          .to_string(float_format=lambda v: f"{v:,.2f}"))
+    for rho in BUDGETS:
+        k = f"{rho:.2f}"
+        print(f"\n[budget {k}]")
+        print(pd.DataFrame({m: result["models"][m]["budget_router"][k] for m in ORDER}).T
+              .to_string(float_format=lambda v: f"{v:,.2f}"))
 
 
 if __name__ == "__main__":

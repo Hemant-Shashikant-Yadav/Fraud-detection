@@ -6,7 +6,7 @@
 
 ## 1. Decision rule (docstring, lines 16–28)
 1. **Conservative score:** `s = clip(p̂ + κ·Δp̂, 0, 1)` — uncertain predictions are pushed up (κ=0.5).
-2. **Threshold rule** with the current `λ` from the controller.
+2. **Action rule from the controller.** With the default `BudgetedBayesCRC` (`decision_rule = "budgeted_bayes"`), the action is the lowest expected cost for this amount (see `budgeted_crc_EXPLAINED.md`). With the legacy `OnlineAdaptiveCRC`, it is the threshold rule with the current `λ`.
 3. **Optional amount-aware escalation:** Approve → Step-Up if `s·A·(m − β) > c_step` (approving costs more in expectation than a challenge).
 4. **Knowledge-base floor:** if any admitted rule fires, action is at least `rule_floor_action` (default Step-Up).
 5. **Epistemic guard:** a Block whose uncertainty `Δp̂ > block_max_uncertainty` (0.25) is downgraded to Hold, whose loss is `c_hold` either way.
@@ -23,13 +23,14 @@ Slot-based record (cheap to create): action, score, `p_hat`, `delta_p_hat`, amou
 Accepts `None`, a bool, an int count, or any sized collection of rules and returns the count.
 
 ### 2.4 `PreTransactionRouter.__init__` (lines 113–133)
-Validates κ and the uncertainty cap, binds a controller (default: a new `OnlineAdaptiveCRC`), parses the rule-floor action, and pre-computes `_c_step` and `_esc_coef = m − β` for speed. Keeps `action_counts`.
+Validates κ and the uncertainty cap, binds a controller (default: a new `OnlineAdaptiveCRC`; `from_config` uses `build_controller`, which follows `conformal_crc.decision_rule`), parses the rule-floor action, and pre-computes `_c_step` and `_esc_coef = m − β` for speed. Keeps `action_counts`.
 `from_config` builds from `hyperparams.json['conformal_crc']['router']`.
 
 ### 2.5 `route` (lines 149–189) — the hot path
 * validates `p∈[0,1]`, `Δp∈[0,1]`, finite amount;
-* computes `s`, reads λ directly from `controller._lam` (a read-only view, no copying);
-* picks the action by the thresholds; applies the amount escalation, the rule floor, and the uncertainty guard in that order (each can overwrite the reason);
+* computes `s`;
+* if the controller has a `decide` method (property `_bayes`), calls `controller.decide(s, amount)` and records the cached cut points; otherwise reads λ from `controller._lam` and picks the action by the thresholds;
+* then applies the amount escalation, the rule floor, and the uncertainty guard in that order (each can overwrite the reason);
 * updates counters, measures its own latency, returns the `RoutingDecision`.
 
 ### 2.6 Convenience entry points (lines 191–218)
@@ -38,7 +39,7 @@ Validates κ and the uncertainty cap, binds a controller (default: a new `Online
 * `route_batch(...)` — routes many rows against the *current* thresholds with no feedback between them.
 
 ### 2.7 `feedback` (lines 221–223)
-Reports the verified label to the controller (`controller.update`), which closes the loop.
+Reports the verified label to the controller (`controller.update`), which closes the loop. For the Bayes controller it also passes the score `s`, which the drift correction θ needs.
 
 ### 2.8 Monitoring (lines 226–243)
 `action_distribution()` (share per action) and `latency_profile(tuples)` — warm-up, then per-call timing; returns mean/p50/p95/p99/max and whether p99 is under the budget.

@@ -122,8 +122,10 @@ METRIC_COLUMNS: Tuple[str, ...] = (
 RESULT_COLUMNS: Tuple[str, ...] = (
     "model", "model_label", "window", "start_step", "end_step", "n_transactions", "n_fraud",
     "fraud_rate", "threshold") + METRIC_COLUMNS + (
-    "intervention_rate", "step_up_rate", "hold_rate", "block_rate", "n_active_rules",
-    "lambda_low", "lambda_mid", "lambda_high", "latency_ms_per_txn", "data_source")
+    "intervention_rate", "step_up_rate", "hold_rate", "block_rate",
+    "legit_intervention_rate", "fraud_value_stopped", "n_active_rules",
+    "lambda_low", "lambda_mid", "lambda_high", "budget_price_nu", "calibration_shift_theta",
+    "latency_ms_per_txn", "data_source")
 
 # Small, CPU-friendly configurations (identical to the Phase-6 test profile) so the
 # whole evaluation runs in minutes; ``--profile full`` uses the published defaults.
@@ -641,14 +643,15 @@ class MGECFMSystem:
             use_relational_embeddings=use_relational, use_ae_residual=use_ae,
             use_kb_triggers=use_kb, seed=self.seed)
         self.gate = MartingaleEProcessGate.from_config(self.hyperparams) if gate_mode == "martingale" else None
-        controller = OnlineAdaptiveCRC.from_config(self.hyperparams, project_config, mode=crc_mode,
-                                                   record_history=False)
+        from src.conformal.budgeted_crc import build_controller
+        controller = build_controller(self.hyperparams, project_config, mode=crc_mode,
+                                      record_history=False)
         self.router = PreTransactionRouter.from_config(self.hyperparams, project_config,
                                                        controller=controller)
         self.loss_fn = controller.loss_fn
         self.threshold_: float = 0.5
         self.is_fitted_ = False
-        self._pending: List[Tuple[int, pd.DataFrame, np.ndarray]] = []
+        self._pending: List[Tuple[int, pd.DataFrame, np.ndarray, np.ndarray]] = []
         self.gate_log: List[Dict[str, Any]] = []
         self.fit_report: Dict[str, Any] = {}
 
@@ -719,6 +722,14 @@ class MGECFMSystem:
         if self.gate is not None:
             self._replay_history(splits.calibration)
             self._sync_encoder()
+        bayes_cfg = self.hyperparams.get("conformal_crc", {}).get("budgeted_bayes", {})
+        if (self.routing == "crc" and hasattr(self.router.controller, "warm_start")
+                and bayes_cfg.get("warm_start_on_calibration", True)):
+            # Label-free warm start: the budget price that meets the intervention
+            # budget on the calibration scores (no label is read).
+            cal = splits.calibration
+            self.router.controller.warm_start(self.classifier.predict_proba(cal),
+                                              cal["amount"].to_numpy(dtype=np.float64))
         # Operating split: past data with known labels, processed block by block
         # (score -> route -> feedback) so the controller and gate enter the test
         # period in their warmed-up state; tau is selected here.
@@ -731,7 +742,7 @@ class MGECFMSystem:
             part = op.loc[block == b].reset_index(drop=True)
             p = self.classifier.predict_proba(part)
             actions = self._route(part, p)
-            self._feedback(part, actions)
+            self._feedback(part, actions, p)
             p_all.append(p)
         p_op = np.concatenate(p_all) if p_all else np.zeros(0)
         self.threshold_ = select_operating_threshold(op["label"].to_numpy(), p_op)
@@ -754,11 +765,15 @@ class MGECFMSystem:
                                                   int(hits[i])).action)
                             for i in range(len(frame))), dtype=np.int64, count=len(frame))
 
-    def _feedback(self, frame: pd.DataFrame, actions: np.ndarray) -> None:
+    def _feedback(self, frame: pd.DataFrame, actions: np.ndarray,
+                  p: Optional[np.ndarray] = None) -> None:
         y = frame["label"].to_numpy().astype(int)
         amounts = frame["amount"].to_numpy(dtype=np.float64)
         if self.routing == "crc":
-            self.router.controller.update_batch(actions, y, amounts)
+            if self.router._bayes:
+                self.router.controller.update_batch(actions, y, amounts, p)
+            else:
+                self.router.controller.update_batch(actions, y, amounts)
         if self.gate is not None:
             self._gate_cycle(frame)
             self._sync_encoder()
@@ -768,8 +783,10 @@ class MGECFMSystem:
         """Release every pending window whose label-availability time has come."""
         due = [item for item in self._pending if item[0] <= window_index]
         self._pending = [item for item in self._pending if item[0] > window_index]
-        for _, frame, actions in sorted(due, key=lambda it: it[0]):
-            self._feedback(frame, actions)
+        for item in sorted(due, key=lambda it: it[0]):
+            # Entries saved before the Bayes router have no score (3-tuples).
+            frame, actions = item[1], item[2]
+            self._feedback(frame, actions, item[3] if len(item) > 3 else None)
         return len(due)
 
     def score_window(self, frame: pd.DataFrame, window_index: int) -> WindowOutput:
@@ -782,11 +799,14 @@ class MGECFMSystem:
         p = np.clip(self.classifier.predict_proba(frame), 0.0, 1.0)
         actions = self._route(frame, p)
         elapsed = (time.perf_counter() - t0) * 1000.0
-        self._pending.append((window_index + 1 + self.label_delay_windows, frame, actions))
+        self._pending.append((window_index + 1 + self.label_delay_windows, frame, actions, p))
         yhat = (p >= self.threshold_).astype(int)
         n = max(len(frame), 1)
         extras = {"n_active_rules": float(n_rules), "lambda_low": lam[0], "lambda_mid": lam[1],
                   "lambda_high": lam[2]}
+        if self.router._bayes:
+            extras.update({"budget_price_nu": self.router.controller.nu,
+                           "calibration_shift_theta": self.router.controller.theta})
         return WindowOutput(p, yhat, actions, self.threshold_, elapsed / n, extras)
 
 
@@ -921,10 +941,15 @@ class DriftEvaluator:
             "step_up_rate": float((acts == int(Action.STEP_UP)).mean()) if n else float("nan"),
             "hold_rate": float((acts == int(Action.HOLD)).mean()) if n else float("nan"),
             "block_rate": float((acts == int(Action.BLOCK)).mean()) if n else float("nan"),
+            "legit_intervention_rate": (float((acts[y == 0] >= int(Action.STEP_UP)).mean())
+                                        if (y == 0).any() else float("nan")),
+            "fraud_value_stopped": (float(amounts[(y == 1) & (acts >= int(Action.HOLD))].sum()
+                                          / amounts[y == 1].sum()) if (y == 1).any() else float("nan")),
             "latency_ms_per_txn": float(out.latency_ms_per_txn),
             "data_source": self.splits.source,
         })
-        for key in ("n_active_rules", "lambda_low", "lambda_mid", "lambda_high"):
+        for key in ("n_active_rules", "lambda_low", "lambda_mid", "lambda_high",
+                    "budget_price_nu", "calibration_shift_theta"):
             rec[key] = float(out.extras.get(key, float("nan")))
         return rec
 

@@ -345,7 +345,7 @@ class TestDriftEvaluator(unittest.TestCase):
     def test_label_release_schedule(self) -> None:
         mg = self.evaluator.systems["mg_ecfm"]
         delay = mg.label_delay_windows
-        pending = sorted(w for w, _, _ in mg._pending)
+        pending = sorted(item[0] for item in mg._pending)          # (due, frame, actions, p)
         # windows W - delay .. W are still unverified after the last window
         self.assertEqual(len(pending), delay + 1)
         self.assertEqual(pending, [N_TEST_WINDOWS - delay + 1 + delay + i for i in range(delay + 1)])

@@ -443,16 +443,31 @@ def table_benchmark(inp: ExperimentInputs) -> PaperTable:
             vals[key].append(mean)
     for key, hib, _ in metrics:
         cols[key] = bold_best(cols[key], vals[key], hib)
+    # Pooled (transaction-weighted) policy outcome: total net loss and intervention rate.
+    net, interv = [], []
+    for m in models:
+        sub = df[df["model"] == m]
+        n = sub["n_transactions"].to_numpy(dtype=np.float64)
+        net.append(float(sub["total_monetary_loss"].sum()))
+        interv.append(float((sub["intervention_rate"].to_numpy(dtype=np.float64) * n).sum() / n.sum())
+                      if "intervention_rate" in sub.columns else float("nan"))
+    net_txt = bold_best([fmt_money(v) for v in net], net, False)
+    interv_txt = [fmt_pct(v, 1, 100.0) for v in interv]
     rows = []
     for i, m in enumerate(models):
         w_p, m_p = _significance_marks(inp.significance, m)
-        rows.append([MODEL_SHORT.get(m, m)] + [cols[k][i] for k, _, _ in metrics] + [w_p, m_p])
+        rows.append([MODEL_SHORT.get(m, m)] + [cols[k][i] for k, _, _ in metrics]
+                    + [net_txt[i], interv_txt[i], w_p, m_p])
     n_win = int(df["window"].nunique())
     source = str(df["data_source"].iloc[0]) if "data_source" in df.columns else "?"
     notes = [
         f"Mean ± std over {n_win} chronological test windows ({source}); best value per column in bold. "
         "EML: mean realised asymmetric monetary + friction loss per transaction under each model's own policy "
-        "(CS-ACRC four-action routing for MG-ECFM, approve/block at the operating threshold for BP1–BP4).",
+        "(budgeted Bayes CS-ACRC four-action routing for MG-ECFM, approve/block at the operating threshold "
+        "for BP1–BP4). Net loss and Interv.: pooled over all test transactions (total realised loss; share of "
+        "transactions routed to Step-Up, Hold or Block). The policies differ in their intervention rates, so "
+        "Net loss is not an equal-friction comparison; see the cost-curve table "
+        "(reports/COMPARISON_WITH_PRIOR_WORK.md) for losses at equal intervention rates.",
         "Latency: amortised batch-scoring time per transaction (ms) on CPU; the single-transaction "
         "authorisation path of MG-ECFM is profiled separately in the dashboard / quick demo.",
         "p (Wilcoxon): Holm-adjusted two-sided Wilcoxon signed-rank test on per-window PR-AUC versus MG-ECFM; "
@@ -463,8 +478,9 @@ def table_benchmark(inp: ExperimentInputs) -> PaperTable:
         key="benchmark",
         caption="Benchmark comparison of MG-ECFM against the four state-of-the-art baselines under "
                 "chronological concept drift.",
-        header=["Model", "PR-AUC", "F1", "Brier", "EML", "Latency (ms)", "p (Wilcoxon)", "p (McNemar)"],
-        rows=rows, align="lccccccc", notes=notes, wide=True)
+        header=["Model", "PR-AUC", "F1", "Brier", "EML", "Latency (ms)", "Net loss", "Interv. (%)",
+                "p (Wilcoxon)", "p (McNemar)"],
+        rows=rows, align="lccccccccc", notes=notes, wide=True)
 
 
 # --------------------------------------------------------------------------- #
@@ -488,9 +504,10 @@ def table_ablation(inp: ExperimentInputs) -> PaperTable:
         gate_txt = {"martingale": "✓", "auto_admit": "auto", "none": "✗"}.get(gate, gate or "—")
         crc = "binary" if str(r.get("routing")) == "binary" else str(r.get("crc_mode", "—"))
         kb = fmt_int(r.get("kb_rules_active_end")) if finite(r.get("kb_rules_active_end")) else "—"
+        interv = fmt_pct(r.get("intervention_rate"), 1, 100.0) if "intervention_rate" in df.columns else "—"
         rows.append([ARM_SHORT.get(a, a), check(r.get("use_graph")), gate_txt, crc,
                      check(r.get("recovery")), check(r.get("assist"))]
-                    + [cells[k][i] for k, *_ in spec] + [kb])
+                    + [cells[k][i] for k, *_ in spec] + [interv, kb])
     src = str(inp.ablation["data_source"].iloc[0]) if "data_source" in inp.ablation.columns else "?"
     notes = [
         f"Pooled over all test windows ({src}). Graph: camouflage-filtered temporal GraphSAGE + DAE residual; "
@@ -498,15 +515,16 @@ def table_ablation(inp: ExperimentInputs) -> PaperTable:
         "CRC: static / adaptive CS-ACRC four-action routing or binary approve/block; Rec.: TD-TPF post-incident "
         "recovery; Assist: retrieval-based analyst assist (off the decision path).",
         "Net loss = realised policy loss − recovered value + recovery cost (monetary units). Prevented: share of "
-        "fraud value intercepted pre-settlement or recovered within the 24 h window. B3 adaptive, B4 and B5 branch "
-        "from one fitted pipeline, so they share ranking metrics by construction.",
+        "fraud value intercepted pre-settlement or recovered within the 24 h window. Interv.: share of test "
+        "transactions routed to Step-Up, Hold or Block. B3 adaptive, B4 and B5 branch from one fitted pipeline, "
+        "so they share ranking metrics by construction.",
     ]
     return PaperTable(
         key="ablation",
         caption="Five-point ablation study (B1–B5) of the MG-ECFM components.",
         header=["Arm", "Graph", "Gate", "CRC", "Rec.", "Assist", "PR-AUC", "F1", "Brier", "EML",
-                "Net loss", "Prevented (%)", "Active rules"],
-        rows=rows, align="lccccc" + "c" * 7, notes=notes, wide=True)
+                "Net loss", "Prevented (%)", "Interv. (%)", "Active rules"],
+        rows=rows, align="lccccc" + "c" * 8, notes=notes, wide=True)
 
 
 # --------------------------------------------------------------------------- #

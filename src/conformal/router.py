@@ -132,6 +132,11 @@ class PreTransactionRouter:
         self.action_counts = [0, 0, 0, 0]
         self.n_routed = 0
 
+    @property
+    def _bayes(self) -> bool:
+        """True when the controller uses the budgeted Bayes rule (works for old pickles too)."""
+        return hasattr(self.controller, "decide")
+
     @classmethod
     def from_config(cls, hyperparams: Optional[Mapping] = None,
                     project_config: Optional[Mapping] = None,
@@ -140,7 +145,9 @@ class PreTransactionRouter:
         if hyperparams is None:
             with open(DEFAULT_HYPERPARAMS_PATH, "r", encoding="utf-8") as fh:
                 hyperparams = json.load(fh)
-        controller = controller or OnlineAdaptiveCRC.from_config(hyperparams, project_config)
+        if controller is None:
+            from src.conformal.budgeted_crc import build_controller
+            controller = build_controller(hyperparams, project_config)
         cfg = dict(hyperparams.get("conformal_crc", {}).get("router", {}))
         cfg.update(overrides)
         return cls(controller=controller, **cfg)
@@ -164,16 +171,21 @@ class PreTransactionRouter:
         s = p + self.kappa * d
         if s > 1.0:
             s = 1.0
-        lam = self.controller._lam  # read-only view of the live thresholds
-        lo, mid, hi = lam[0], lam[1], lam[2]
-        if s < lo:
-            a = 0
-        elif s < mid:
-            a = 1
-        elif s < hi:
-            a = 2
+        if self._bayes:
+            # Budgeted Bayes rule: the action depends on the amount, not on fixed bands.
+            a = self.controller.decide(s, amt)
+            lo, mid, hi = self.controller.thresholds  # cached; recomputed only after feedback
         else:
-            a = 3
+            lam = self.controller._lam  # read-only view of the live thresholds
+            lo, mid, hi = lam[0], lam[1], lam[2]
+            if s < lo:
+                a = 0
+            elif s < mid:
+                a = 1
+            elif s < hi:
+                a = 2
+            else:
+                a = 3
         reason = REASON_THRESHOLD
         if a == 0 and self.amount_aware and s * amt * self._esc_coef > self._c_step:
             a, reason = 1, REASON_AMOUNT
@@ -220,6 +232,8 @@ class PreTransactionRouter:
     # -- feedback ----------------------------------------------------------- #
     def feedback(self, decision: RoutingDecision, y: int) -> CRCStep:
         """Report the verified label of a routed transaction to the controller."""
+        if self._bayes:
+            return self.controller.update(decision.action, y, decision.amount, decision.score)
         return self.controller.update(decision.action, y, decision.amount)
 
     # -- monitoring --------------------------------------------------------- #
