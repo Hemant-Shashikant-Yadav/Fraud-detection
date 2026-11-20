@@ -206,6 +206,15 @@ python main.py --mode train --source paysim --profile fast --max-rows 500000
 python main.py --mode full-pipeline --source paysim --max-rows 2000000
 ```
 
+Comparison with the earlier Evidence-Gated notebook project (needs the drift-evaluation predictions):
+
+```powershell
+python experiments\run_prior_work_comparison.py   # -> reports\prior_work_predictions.csv
+python experiments\compare_with_prior_work.py     # -> reports\prior_work_comparison.json
+```
+
+The results and the claims they support are in `reports/COMPARISON_WITH_PRIOR_WORK.md`.
+
 `full-pipeline` is equivalent to running, in order, `experiments/run_drift_eval.py`,
 `experiments/statistical_significance.py`, `experiments/run_ablation_study.py`,
 `experiments/run_adversarial_stress_test.py`, `reports/generate_paper_tables.py` and

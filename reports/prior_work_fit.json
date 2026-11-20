@@ -1,0 +1,50 @@
+{
+ "prior_b1_raw": {
+  "features": [
+   "step",
+   "amount",
+   "type_CASH_IN",
+   "type_CASH_OUT",
+   "type_DEBIT",
+   "type_PAYMENT",
+   "type_TRANSFER"
+  ],
+  "platt": false,
+  "threshold": 0.9906717538833618,
+  "latency_ms_per_txn": 0.0001426728475875983
+ },
+ "prior_b1_cal": {
+  "features": [
+   "step",
+   "amount",
+   "type_CASH_IN",
+   "type_CASH_OUT",
+   "type_DEBIT",
+   "type_PAYMENT",
+   "type_TRANSFER"
+  ],
+  "platt": true,
+  "threshold": 0.047459655141932386,
+  "latency_ms_per_txn": 0.00013636363636332043
+ },
+ "prior_b1_graph": {
+  "features": [
+   "step",
+   "amount",
+   "type_CASH_IN",
+   "type_CASH_OUT",
+   "type_DEBIT",
+   "type_PAYMENT",
+   "type_TRANSFER",
+   "src_graph_out_count_before",
+   "dst_graph_in_count_before",
+   "src_dst_pair_repeat_before",
+   "src_recency_steps",
+   "dst_recency_steps",
+   "src_dst_pair_seen_before"
+  ],
+  "platt": true,
+  "threshold": 0.11430155497017247,
+  "latency_ms_per_txn": 0.0001458797551233135
+ }
+}
